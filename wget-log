@@ -1,0 +1,5 @@
+--2026-02-25 22:25:00--  https://update.code.visualstudio.com/commit:072586267e68ece9a47aa43f8c108e0dcbf44622/server-linux-x64/stable
+Resolving update.code.visualstudio.com (update.code.visualstudio.com)... 13.107.253.53, 13.107.226.53, 2620:1ec:48:1::53, ...
+Connecting to update.code.visualstudio.com (update.code.visualstudio.com)|13.107.253.53|:443... connected.
+OpenSSL: error:0A000126:SSL routines::unexpected eof while reading
+Unable to establish SSL connection.
