@@ -11,7 +11,9 @@ use App\Http\Controllers\ProfileController;
 
 
 
-Route::get('/', [BookController::class, 'index'])->name('home');
+Route::get('/', [BookController::class, 'welcome'])->name('home');
+Route::get('/catalog', [BookController::class, 'catalog'])->name('catalog');
+Route::get('/favorites', [BookController::class, 'favorites'])->name('favorites');
 Route::get('/books/{book}', [BookController::class, 'show'])->name('books.show');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');

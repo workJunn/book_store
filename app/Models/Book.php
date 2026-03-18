@@ -40,6 +40,18 @@ class Book extends Model
         return $this->belongsTo(Publisher::class, 'id_publishers', 'id_publishers');
     }
 
+    public function genres()
+    {
+        return $this->belongsToMany(
+            Genre::class,
+            'book_genres',
+            'id_books',
+            'id_genre',
+            'id_books',
+            'id_genre'
+        );
+    }
+
     public function toCartItem(): array
     {
         return [
