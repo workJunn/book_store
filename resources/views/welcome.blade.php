@@ -4,6 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Каталог - Книжный Мир</title>
 
     <style>
@@ -38,9 +39,6 @@
             font-weight: bold;
             color: #667eea;
             text-decoration: none;
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
         }
 
         nav ul {
@@ -61,8 +59,6 @@
             gap: 1rem;
         }
 
-        /* корзина */
-
         .cart-link {
             position: relative;
             text-decoration: none;
@@ -81,19 +77,10 @@
             border-radius: 50%;
         }
 
-        /* иконка профиля */
-
         .profile-link {
             text-decoration: none;
             color: #667eea;
             font-size: 1.7rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .profile-link:hover {
-            color: #5568d3;
         }
 
         .btn {
@@ -173,6 +160,12 @@
             margin-bottom: 1rem;
         }
 
+        .book-meta {
+            font-size: 0.9rem;
+            color: #555;
+            margin-bottom: 1rem;
+        }
+
         .book-footer {
             display: flex;
             justify-content: space-between;
@@ -187,116 +180,293 @@
             color: #667eea;
         }
 
-        .old-price {
-            font-size: 1rem;
-            color: #999;
-            text-decoration: line-through;
-            margin-left: 5px;
+        .in-stock {
+            color: #16a34a;
+            font-weight: 600;
+        }
+
+        .out-of-stock {
+            color: #dc2626;
+            font-weight: 600;
+        }
+
+        .flash-message {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 9999;
+            padding: 14px 20px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 600;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+            display: none;
+        }
+
+        .flash-success {
+            background: #16a34a;
+        }
+
+        .flash-error {
+            background: #dc2626;
+        }
+
+        .site-footer {
+            margin: 2rem auto 0;
+            width: calc(100% - 4rem);
+            max-width: 1400px;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15);
+            border-radius: 20px 20px 0 0;
+            padding: 2rem;
+        }
+
+        .footer-links {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 18px;
+            margin-bottom: 1rem;
+        }
+
+        .footer-links a {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        .footer-links a:hover {
+            color: #764ba2;
+        }
+
+        .footer-info {
+            font-size: 14px;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .footer-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+
+        .socials {
+            display: flex;
+            gap: 10px;
+        }
+
+        .socials a {
+            text-decoration: none;
+            color: white;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            padding: 6px 10px;
+            border-radius: 6px;
+            font-size: 12px;
+        }
+
+        .app-link {
+            color: #667eea;
+            font-weight: 700;
         }
     </style>
 </head>
 
 <body>
 
-<header>
-
-    <a href="{{ route('home') }}" class="logo">
-        📚 Книжный Мир
-    </a>
-
-    <nav>
-        <ul>
-            <li><a href="{{ route('home') }}">Главная</a></li>
-            <li><a href="{{ route('home') }}">Каталог</a></li>
-        </ul>
-    </nav>
-
-    <div class="auth-buttons">
-
-        <a href="{{ route('cart.index') }}" class="cart-link">
-            🛒
-            <span class="cart-count">
-                {{ array_sum(array_column(session('cart', []), 'quantity')) }}
-            </span>
+    <header>
+        <a href="{{ route('home') }}" class="logo">
+            📚 Книжный Мир
         </a>
 
-        @guest
-            <a href="{{ route('User_login') }}" class="btn btn-secondary">Log in</a>
-            <a href="{{ route('register') }}" class="btn btn-primary">Register</a>
-        @endguest
+        <nav>
+            <ul>
+                <li><a href="{{ route('home') }}">Главная</a></li>
+                <li><a href="{{ route('home') }}">Каталог</a></li>
+            </ul>
+        </nav>
 
-        @auth
-            <a href="{{ route('dashboard') }}" class="profile-link" title="Профиль">
-                👤
+        <div class="auth-buttons">
+            <a href="{{ route('cart.index') }}" class="cart-link">
+                🛒
+                <span class="cart-count" id="cart-count">
+                    {{ array_sum(array_column(session('cart', []), 'quantity')) }}
+                </span>
             </a>
-        @endauth
 
-    </div>
+            @guest
+                <a href="{{ route('User_login') }}" class="btn btn-secondary">Log in</a>
+                <a href="{{ route('register') }}" class="btn btn-primary">Register</a>
+            @endguest
 
-</header>
+            @auth
+                <a href="{{ route('dashboard') }}" class="profile-link">👤</a>
+            @endauth
+        </div>
+    </header>
 
-<main>
+    <main>
+        <div class="container">
+            <h1 class="page-title">📖 Каталог книг</h1>
 
-<div class="container">
+            <div class="books-grid">
+                @foreach($books as $book)
+                    <div class="book-card">
+                        <a href="{{ route('books.show', $book->getKey()) }}">
+                            <img
+                                src="https://via.placeholder.com/500x700/667eea/ffffff?text={{ urlencode($book->book_name) }}"
+                                class="book-image"
+                                alt="{{ $book->book_name }}"
+                            >
+                        </a>
 
-<h1 class="page-title">📖 Каталог книг</h1>
+                        <div class="book-content">
+                            <h3 class="book-title">
+                                {{ $book->book_name }}
+                            </h3>
 
-@if(session('success'))
-    <div style="background:#dcfce7;color:#166534;padding:15px;border-radius:10px;margin-bottom:20px;text-align:center;">
-        {{ session('success') }}
-    </div>
-@endif
+                            <p class="book-author">
+                                Автор: {{ $book->author->author_name ?? 'Не указан' }}
+                            </p>
 
-<div class="books-grid">
+                            <p class="book-description">
+                                {{ $book->description ?? 'Описание отсутствует.' }}
+                            </p>
 
-@foreach($books as $book)
+                            <div class="book-meta">
+                                <div>
+                                    Страниц: {{ $book->number_of_pages }}
+                                </div>
 
-<div class="book-card">
+                                <div>
+                                    Рейтинг: {{ $book->average_rating ?? 0 }}
+                                </div>
 
-    <a href="{{ route('books.show', $book['id']) }}">
-        <img src="{{ $book['image'] }}" class="book-image">
-    </a>
+                                <div>
+                                    Наличие:
 
-    <div class="book-content">
+                                    @if($book->stock_quantity > 0)
+                                        <span class="in-stock">
+                                            В наличии ({{ $book->stock_quantity }})
+                                        </span>
+                                    @else
+                                        <span class="out-of-stock">
+                                            Нет в наличии
+                                        </span>
+                                    @endif
+                                </div>
+                            </div>
 
-        <h3 class="book-title">{{ $book['title'] }}</h3>
-        <p class="book-author">{{ $book['author'] }}</p>
+                            <div class="book-footer">
+                                <div class="book-price">
+                                    {{ number_format((float) $book->price, 2, '.', ' ') }} ₽
+                                </div>
 
-        <p class="book-description">
-            {{ $book['description'] }}
-        </p>
-
-        <div class="book-footer">
-
-            <div class="book-price">
-                {{ $book['price'] }} ₽
-
-                @if($book['old_price'])
-                    <span class="old-price">
-                        {{ $book['old_price'] }} ₽
-                    </span>
-                @endif
+                                @if($book->stock_quantity > 0)
+                                    <button
+                                        class="btn btn-primary"
+                                        onclick="addToCart({{ $book->getKey() }})"
+                                    >
+                                        В корзину
+                                    </button>
+                                @else
+                                    <button class="btn btn-secondary" disabled>
+                                        Нет в наличии
+                                    </button>
+                                @endif
+                            </div>
+                        </div>
+                    </div>
+                @endforeach
             </div>
+        </div>
+    </main>
 
-            <form action="{{ route('cart.add', $book['id']) }}" method="POST">
-                @csrf
-                <button class="btn btn-primary">
-                    В корзину
-                </button>
-            </form>
+    <div id="flash-message" class="flash-message"></div>
 
+    <footer class="site-footer">
+        <div class="footer-links">
+            <a href="#">Правовая информация</a>
+            <a href="#">Контакты</a>
+            <a href="#">Реклама</a>
+            <a href="#">Политика конфиденциальности</a>
+            <a href="#">Условия использования</a>
+            <a href="#">Пресс-релизы</a>
         </div>
 
-    </div>
+        <div class="footer-info">
+            На информационном ресурсе применяются рекомендательные технологии
+            в соответствии с правилами сервиса.
+        </div>
 
-</div>
+        <div class="footer-bottom">
+            <div>
+                © Книжный Мир 2024
+            </div>
 
-@endforeach
+            <div class="socials">
+                <a href="#">VK</a>
+                <a href="#">X</a>
+                <a href="#">OK</a>
+                <a href="#">TG</a>
+                <a href="#">YT</a>
+            </div>
 
-</div>
-</div>
+            <div class="app-link">
+                📱 Приложение для Android
+            </div>
+        </div>
+    </footer>
 
-</main>
+    <script>
+        const token = document
+            .querySelector('meta[name="csrf-token"]')
+            .getAttribute('content');
+
+        async function addToCart(id) {
+            let res;
+            let data;
+
+            try {
+                res = await fetch(`/cart/add/${id}`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': token,
+                        'Accept': 'application/json'
+                    }
+                });
+
+                data = await res.json();
+            } catch (error) {
+                showMessage('Ошибка сервера', 'error');
+                return;
+            }
+
+            const cartCount = document.getElementById('cart-count');
+
+            if (cartCount && data.cart_count !== undefined) {
+                cartCount.innerText = data.cart_count;
+            }
+
+            showMessage(data.message || 'Книга добавлена', 'success');
+        }
+
+        function showMessage(text, type = 'success') {
+            const message = document.getElementById('flash-message');
+
+            message.className = 'flash-message';
+            message.classList.add(type === 'success' ? 'flash-success' : 'flash-error');
+
+            message.textContent = text;
+            message.style.display = 'block';
+
+            setTimeout(() => {
+                message.style.display = 'none';
+            }, 2000);
+        }
+    </script>
 
 </body>
+
 </html>

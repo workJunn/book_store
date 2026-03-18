@@ -3,7 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Корзина - Книжный Мир</title>
+
     <style>
         * {
             margin: 0;
@@ -36,16 +38,25 @@
         .cart-page {
             max-width: 1100px;
             margin: 2rem auto;
-            background: rgba(255,255,255,0.96);
+            background: rgba(255, 255, 255, 0.96);
             border-radius: 20px;
             padding: 2rem;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.2);
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
         }
 
         .page-title {
             font-size: 2rem;
             color: #333;
             margin-bottom: 1.5rem;
+        }
+
+        .top-buttons {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+            gap: 10px;
         }
 
         .cart-item {
@@ -98,10 +109,6 @@
             color: #333;
         }
 
-        .qty-form {
-            margin: 0;
-        }
-
         .qty-btn {
             width: 40px;
             height: 40px;
@@ -113,6 +120,11 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            transition: transform 0.15s ease;
+        }
+
+        .qty-btn:hover {
+            transform: scale(1.1);
         }
 
         .qty-btn-plus {
@@ -181,6 +193,15 @@
             color: #555;
         }
 
+        .success-box {
+            margin-bottom: 20px;
+            background: #dcfce7;
+            color: #166534;
+            padding: 15px 20px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
         @media (max-width: 768px) {
             .cart-item {
                 grid-template-columns: 1fr;
@@ -197,6 +218,7 @@
         }
     </style>
 </head>
+
 <body>
     <header>
         <a href="{{ route('home') }}" class="logo">📚 Книжный Мир</a>
@@ -207,60 +229,161 @@
         <div class="cart-page">
             <h1 class="page-title">🛒 Корзина</h1>
 
+            @if(count($cart) > 0)
+                <div class="top-buttons" id="top-buttons">
+                    <button onclick="clearCart()" class="btn btn-danger" type="button">
+                        Очистить корзину
+                    </button>
+                </div>
+            @endif
+
             @if(session('success'))
-                <div style="margin-bottom: 20px; background: #dcfce7; color: #166534; padding: 15px 20px; border-radius: 12px; font-weight: 600;">
+                <div class="success-box">
                     {{ session('success') }}
                 </div>
             @endif
 
-            @if(count($cart))
-                @foreach($cart as $item)
-                    <div class="cart-item">
-                        <img src="{{ $item['image'] }}" alt="{{ $item['title'] }}" class="cart-image">
+            <div id="cart-content">
+                @if(count($cart))
+                    <div id="cart-items">
+                        @foreach($cart as $item)
+                            <div class="cart-item" id="item-{{ $item['id'] }}">
+                                <img src="{{ $item['image'] }}" class="cart-image" alt="{{ $item['title'] }}">
 
-                        <div>
-                            <div class="cart-title">{{ $item['title'] }}</div>
-                            <div class="cart-author">{{ $item['author'] }}</div>
-                            <div class="cart-price">{{ $item['price'] }} ₽</div>
+                                <div>
+                                    <div class="cart-title">{{ $item['title'] }}</div>
+                                    <div class="cart-author">{{ $item['author'] }}</div>
+                                    <div class="cart-price">{{ $item['price'] }} ₽</div>
 
-                            <div class="qty-controls">
-                                <form action="{{ route('cart.decrease', $item['id']) }}" method="POST" class="qty-form">
-                                    @csrf
-                                    <button type="submit" class="qty-btn qty-btn-minus">-</button>
-                                </form>
+                                    <div class="qty-controls">
+                                        <button
+                                            class="qty-btn qty-btn-minus"
+                                            onclick="updateCart({{ $item['id'] }}, 'decrease')"
+                                            type="button"
+                                        >
+                                            -
+                                        </button>
 
-                                <div class="qty-value">{{ $item['quantity'] }}</div>
+                                        <div class="qty-value" id="qty-{{ $item['id'] }}">
+                                            {{ $item['quantity'] }}
+                                        </div>
 
-                                <form action="{{ route('cart.increase', $item['id']) }}" method="POST" class="qty-form">
-                                    @csrf
-                                    <button type="submit" class="qty-btn qty-btn-plus">+</button>
-                                </form>
+                                        <button
+                                            class="qty-btn qty-btn-plus"
+                                            onclick="updateCart({{ $item['id'] }}, 'increase')"
+                                            type="button"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <div class="item-total" id="item-total-{{ $item['id'] }}">
+                                        {{ $item['price'] * $item['quantity'] }} ₽
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-
-                        <div>
-                            <div class="item-total">{{ $item['price'] * $item['quantity'] }} ₽</div>
-
-                            <form action="{{ route('cart.remove', $item['id']) }}" method="POST" style="margin-top: 10px;">
-                                @csrf
-                                <button type="submit" class="btn btn-danger">Удалить</button>
-                            </form>
-                        </div>
+                        @endforeach
                     </div>
-                @endforeach
 
-                <div class="summary">
-                    <div class="summary-total">Итого: {{ $total }} ₽</div>
-                    <a href="#" class="btn btn-primary">Оформить заказ</a>
-                </div>
-            @else
+                    <div class="summary">
+                        <div class="summary-total">
+                            Итого:
+                            <span id="cart-total">{{ $total }}</span>
+                            ₽
+                        </div>
+
+                        <a href="#" class="btn btn-primary">
+                            Оформить заказ
+                        </a>
+                    </div>
+                @else
+                    <div class="empty-cart">
+                        <h2>Корзина пуста</h2>
+                        <p style="margin: 12px 0 20px;">Добавьте книги из каталога</p>
+                        <a href="{{ route('home') }}" class="btn btn-primary">Перейти в каталог</a>
+                    </div>
+                @endif
+            </div>
+        </div>
+    </main>
+
+    <script>
+        const token = document
+            .querySelector('meta[name="csrf-token"]')
+            .getAttribute('content');
+
+        async function updateCart(id, action) {
+            const res = await fetch(`/cart/${action}/${id}`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': token,
+                    'Accept': 'application/json'
+                }
+            });
+
+            const data = await res.json();
+
+            if (data.removed) {
+                document.getElementById(`item-${id}`).remove();
+
+                const totalElement = document.getElementById('cart-total');
+                if (totalElement) {
+                    totalElement.innerText = data.total;
+                }
+
+                if (document.querySelectorAll('.cart-item').length === 0) {
+                    const topButtons = document.getElementById('top-buttons');
+
+                    if (topButtons) {
+                        topButtons.remove();
+                    }
+
+                    document.getElementById('cart-content').innerHTML = `
+                        <div class="empty-cart">
+                            <h2>Корзина пуста</h2>
+                            <p style="margin: 12px 0 20px;">Добавьте книги из каталога</p>
+                            <a href="{{ route('home') }}" class="btn btn-primary">Перейти в каталог</a>
+                        </div>
+                    `;
+                }
+
+                return;
+            }
+
+            document.getElementById(`qty-${id}`).innerText = data.quantity;
+            document.getElementById(`item-total-${id}`).innerText = data.item_total + ' ₽';
+            document.getElementById('cart-total').innerText = data.total;
+        }
+
+        async function clearCart() {
+            if (!confirm('Очистить корзину?')) {
+                return;
+            }
+
+            await fetch('/cart/clear', {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': token,
+                    'Accept': 'application/json'
+                }
+            });
+
+            const topButtons = document.getElementById('top-buttons');
+
+            if (topButtons) {
+                topButtons.remove();
+            }
+
+            document.getElementById('cart-content').innerHTML = `
                 <div class="empty-cart">
                     <h2>Корзина пуста</h2>
                     <p style="margin: 12px 0 20px;">Добавьте книги из каталога</p>
                     <a href="{{ route('home') }}" class="btn btn-primary">Перейти в каталог</a>
                 </div>
-            @endif
-        </div>
-    </main>
+            `;
+        }
+    </script>
 </body>
 </html>

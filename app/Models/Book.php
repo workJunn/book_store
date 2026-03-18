@@ -1,0 +1,55 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+
+class Book extends Model
+{
+    protected $table = 'books';
+    protected $primaryKey = 'id_books';
+    public $incrementing = true;
+    protected $keyType = 'int';
+    public $timestamps = false;
+
+    protected $fillable = [
+        'book_name',
+        'price',
+        'stock_quantity',
+        'publication_date',
+        'number_of_pages',
+        'average_rating',
+        'description',
+        'id_author',
+        'id_publishers',
+    ];
+
+    protected $casts = [
+        'price' => 'decimal:2',
+        'average_rating' => 'decimal:1',
+        'publication_date' => 'date',
+    ];
+
+    public function author()
+    {
+        return $this->belongsTo(Author::class, 'id_author', 'id_author');
+    }
+
+    public function publisher()
+    {
+        return $this->belongsTo(Publisher::class, 'id_publishers', 'id_publishers');
+    }
+
+    public function toCartItem(): array
+    {
+        return [
+            'id' => $this->id_books,
+            'title' => $this->book_name,
+            'author' => $this->author->author_name ?? 'Не указан',
+            'price' => (float) $this->price,
+            'image' => 'https://via.placeholder.com/500x700/667eea/ffffff?text=' . urlencode($this->book_name),
+            'quantity' => 1,
+            'stock_quantity' => $this->stock_quantity,
+        ];
+    }
+}

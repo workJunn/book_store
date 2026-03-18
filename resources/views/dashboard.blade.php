@@ -100,21 +100,25 @@
 
         .profile-container {
             width: 100%;
-            max-width: 500px;
+            max-width: 700px;
         }
 
         .profile-card {
             background: rgba(255, 255, 255, 0.97);
-            border-radius: 20px;
-            padding: 3rem 2rem;
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.2);
+            border-radius: 24px;
+            padding: 2.5rem 2rem;
+            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.18);
+        }
+
+        .profile-top {
             text-align: center;
+            margin-bottom: 2rem;
         }
 
         .profile-avatar {
             width: 110px;
             height: 110px;
-            margin: 0 auto 1.5rem;
+            margin: 0 auto 1.2rem;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -128,19 +132,72 @@
         .profile-title {
             font-size: 2rem;
             color: #333;
-            margin-bottom: 0.7rem;
+            margin-bottom: 0.5rem;
         }
 
         .profile-subtitle {
             color: #666;
             font-size: 1rem;
-            margin-bottom: 2rem;
+        }
+
+        .profile-status {
+            margin-top: 1rem;
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 999px;
+            font-size: 0.95rem;
+            font-weight: 600;
+        }
+
+        .verified {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .not-verified {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .profile-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1rem;
+        }
+
+        .info-box {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 1rem 1.2rem;
+            border: 1px solid #e5e7eb;
+        }
+
+        .info-label {
+            font-size: 0.9rem;
+            color: #6b7280;
+            margin-bottom: 0.35rem;
+        }
+
+        .info-value {
+            font-size: 1rem;
+            color: #111827;
+            font-weight: 600;
+            word-break: break-word;
+        }
+
+        .full-width {
+            grid-column: 1 / -1;
+        }
+
+        .logout-form {
+            margin-top: 2rem;
+            text-align: center;
         }
 
         .btn {
             padding: 0.95rem 1.6rem;
             border: none;
-            border-radius: 8px;
+            border-radius: 10px;
             cursor: pointer;
             font-weight: 600;
             text-decoration: none;
@@ -159,14 +216,6 @@
             transform: translateY(-2px);
         }
 
-        .logout-form {
-            margin-top: 0.5rem;
-        }
-
-        .logout-form button {
-            min-width: 220px;
-        }
-
         @media (max-width: 768px) {
             header {
                 padding: 1rem;
@@ -182,6 +231,14 @@
 
             .profile-title {
                 font-size: 1.7rem;
+            }
+
+            .profile-info {
+                grid-template-columns: 1fr;
+            }
+
+            .full-width {
+                grid-column: auto;
             }
         }
     </style>
@@ -207,9 +264,59 @@
     <main>
         <div class="profile-container">
             <div class="profile-card">
-                <div class="profile-avatar">👤</div>
-                <h1 class="profile-title">Профиль</h1>
-                <p class="profile-subtitle">Управление аккаунтом</p>
+                <div class="profile-top">
+                    <div class="profile-avatar">👤</div>
+                    <h1 class="profile-title">{{ $user->name }}</h1>
+                    <p class="profile-subtitle">Личная информация пользователя</p>
+
+                    <div class="profile-status {{ $user->email_verified_at ? 'verified' : 'not-verified' }}">
+                        {{ $user->email_verified_at ? 'Email подтверждён' : 'Email не подтверждён' }}
+                    </div>
+                </div>
+
+                <div class="profile-info">
+
+                    <div class="info-box">
+                        <div class="info-label">Имя</div>
+                        <div class="info-value">{{ $user->name }}</div>
+                    </div>
+
+                    <div class="info-box full-width">
+                        <div class="info-label">Email</div>
+                        <div class="info-value">{{ $user->email }}</div>
+                    </div>
+
+                    <div class="info-box">
+                        <div class="info-label">Телефон</div>
+                        <div class="info-value">{{ $user->phone_number ?: 'Не указан' }}</div>
+                    </div>
+
+                    <div class="info-box">
+                        <div class="info-label">Баланс</div>
+                        <div class="info-value">{{ number_format((float) $user->balance, 2, '.', ' ') }} ₽</div>
+                    </div>
+
+                    <div class="info-box">
+                        <div class="info-label">Дата регистрации</div>
+                        <div class="info-value">
+                            {{ $user->registration_date ? $user->registration_date->format('d.m.Y H:i') : 'Не указана' }}
+                        </div>
+                    </div>
+
+                    <div class="info-box">
+                        <div class="info-label">Дата создания записи</div>
+                        <div class="info-value">
+                            {{ $user->created_at ? $user->created_at->format('d.m.Y H:i') : 'Не указана' }}
+                        </div>
+                    </div>
+
+                    <div class="info-box full-width">
+                        <div class="info-label">Последнее обновление профиля</div>
+                        <div class="info-value">
+                            {{ $user->updated_at ? $user->updated_at->format('d.m.Y H:i') : 'Не обновлялся' }}
+                        </div>
+                    </div>
+                </div>
 
                 <form method="POST" action="{{ route('logout') }}" class="logout-form">
                     @csrf
