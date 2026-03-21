@@ -2,7 +2,6 @@ import './bootstrap';
 
 const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 const favoritesStorageKey = 'book_store_favorites';
-let flashTimeoutId;
 
 function getHomeUrl() {
     return document.body.dataset.homeUrl || '/';
@@ -81,7 +80,7 @@ function renderFavoritesPage() {
         favoritesContent.innerHTML = `
             <div class="favorites-empty">
                 <h2>В избранном пока пусто</h2>
-                <p>Нажмите на сердце у книги, и она появится на этой странице.</p>
+                <p>Нажмите на значок закладки у книги, и она появится на этой странице.</p>
                 <a href="${getHomeUrl()}" class="btn btn-primary">Перейти в каталог</a>
             </div>
         `;
@@ -105,7 +104,7 @@ function renderFavoritesPage() {
                         data-book-url="${escapeHtml(book.url)}"
                         aria-label="Убрать из избранного"
                     >
-                        ❤
+                        <span class="bookmark-icon bookmark-icon--button" aria-hidden="true"></span>
                     </button>
 
                     <a href="${escapeHtml(book.url)}" class="favorite-card__image-link">
@@ -149,21 +148,7 @@ function toggleFavorite(button) {
 }
 
 function showFlashMessage(text, type = 'success') {
-    const message = document.getElementById('flash-message');
-
-    if (!message) {
-        return;
-    }
-
-    message.hidden = false;
-    message.className = 'flash-message';
-    message.classList.add(type === 'success' ? 'flash-success' : 'flash-error');
-    message.textContent = text;
-
-    window.clearTimeout(flashTimeoutId);
-    flashTimeoutId = window.setTimeout(() => {
-        message.hidden = true;
-    }, 2200);
+    return undefined;
 }
 
 async function postJson(url) {
@@ -283,8 +268,19 @@ async function clearCart(withConfirmation = true) {
 
 async function confirmCheckout() {
     try {
-        await postJson('/cart/clear');
-        updateCartCount(0);
+        const data = await postJson('/cart/checkout');
+
+        if (data.requires_auth && data.login_url) {
+            window.location.assign(data.login_url);
+            return;
+        }
+
+        if (data.error) {
+            showFlashMessage(data.message || 'Не удалось оформить заказ', 'error');
+            return;
+        }
+
+        updateCartCount(data.cart_count ?? 0);
         closeCheckoutModal();
 
         const cartContent = document.getElementById('cart-content');
@@ -298,11 +294,11 @@ async function confirmCheckout() {
 
         cartContent.innerHTML = `
             <div class="success-box">
-                Заказ успешно оформлен. Оплата не требуется, это демонстрационное подтверждение.
+                ${escapeHtml(data.message || 'Заказ успешно оформлен.')}
             </div>
             <div class="empty-cart">
                 <h2>Корзина пуста</h2>
-                <p>Вы можете вернуться в каталог и выбрать новые книги</p>
+                <p>Заказ №${escapeHtml(data.order_id ?? '')} сохранен. Вы можете вернуться в каталог и выбрать новые книги.</p>
                 <a href="${getHomeUrl()}" class="btn btn-primary">Перейти в каталог</a>
             </div>
         `;
@@ -377,10 +373,55 @@ function initBookShelves() {
     });
 }
 
+function initReviewsHub() {
+    const hub = document.querySelector('[data-reviews-hub]');
+
+    if (!hub) {
+        return;
+    }
+
+    const triggers = Array.from(hub.querySelectorAll('[data-reviews-tab-trigger]'));
+    const panels = Array.from(hub.querySelectorAll('[data-reviews-tab-panel]'));
+
+    const activateTab = (tabName) => {
+        triggers.forEach((trigger) => {
+            const isActive = trigger.dataset.reviewsTabTrigger === tabName;
+            trigger.classList.toggle('is-active', isActive);
+            trigger.setAttribute('aria-selected', isActive ? 'true' : 'false');
+        });
+
+        panels.forEach((panel) => {
+            const isActive = panel.dataset.reviewsTabPanel === tabName;
+            panel.classList.toggle('is-active', isActive);
+            panel.hidden = !isActive;
+        });
+    };
+
+    triggers.forEach((trigger) => {
+        trigger.addEventListener('click', () => {
+            activateTab(trigger.dataset.reviewsTabTrigger);
+        });
+    });
+
+    document.querySelectorAll('[data-open-review-form]').forEach((button) => {
+        button.addEventListener('click', () => {
+            const reviewForm = document.getElementById('review-form-panel');
+
+            if (!reviewForm) {
+                return;
+            }
+
+            reviewForm.open = true;
+            reviewForm.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        });
+    });
+}
+
 updateFavoritesCount();
 syncFavoriteButtons();
 renderFavoritesPage();
 initBookShelves();
+initReviewsHub();
 
 document.addEventListener('click', (event) => {
     const favoriteButton = event.target.closest('[data-favorite-toggle]');

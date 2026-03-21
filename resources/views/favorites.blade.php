@@ -22,7 +22,7 @@
 
             <div class="site-actions">
                 <a href="{{ route('favorites') }}" class="favorites-link" title="Избранное">
-                    ❤
+                    <span class="bookmark-icon" aria-hidden="true"></span>
                     <span class="cart-count" data-favorites-count>0</span>
                 </a>
 
@@ -55,8 +55,6 @@
         </section>
     </main>
 
-    <div id="flash-message" class="flash-message" hidden></div>
-
     <footer class="site-footer">
         <div class="footer-links">
             <a href="#">Правовая информация</a>
@@ -74,14 +72,6 @@
 
         <div class="footer-bottom">
             <div>© Книжный Мир 2024</div>
-
-            <div class="socials">
-                <a href="#">VK</a>
-                <a href="#">X</a>
-                <a href="#">OK</a>
-                <a href="#">TG</a>
-                <a href="#">YT</a>
-            </div>
 
             <div class="app-link">📱 Приложение для Android</div>
         </div>

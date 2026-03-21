@@ -10,7 +10,15 @@ use Illuminate\Validation\Rules\Password as PasswordRule;
 
 class ResetPasswordController extends Controller
 {
-    public function create(Request $request)
+    public function edit(Request $request, string $token)
+    {
+        return view('auth.reset-password', [
+            'token' => $token,
+            'email' => (string) $request->query('email', ''),
+        ]);
+    }
+
+    public function update(Request $request)
     {
         $validated = $request->validate([
             'token' => ['required', 'string'],
@@ -23,6 +31,7 @@ class ResetPasswordController extends Controller
             function ($user, string $password) {
                 $user->forceFill([
                     'password' => Hash::make($password),
+                    'remember_token' => null,
                 ])->save();
             }
         );

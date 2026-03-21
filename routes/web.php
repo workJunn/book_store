@@ -15,6 +15,7 @@ Route::get('/', [BookController::class, 'welcome'])->name('home');
 Route::get('/catalog', [BookController::class, 'catalog'])->name('catalog');
 Route::get('/favorites', [BookController::class, 'favorites'])->name('favorites');
 Route::get('/books/{book}', [BookController::class, 'show'])->name('books.show');
+Route::post('/books/{book}/reviews', [BookController::class, 'storeReview'])->middleware('auth')->name('books.reviews.store');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart/add/{id}', [CartController::class, 'add'])->name('cart.add');
@@ -31,10 +32,12 @@ Route::post('/login', [LoginController::class, 'store'])->middleware('guest');
 
 Route::get('/forgot-password', [ForgotPasswordController::class, 'create'])->middleware('guest')->name('password.request');
 Route::post('/forgot-password', [ForgotPasswordController::class, 'store'])->middleware('guest')->name('password.email');
-
-Route::post('/reset-password', [ResetPasswordController::class, 'create'])->middleware('guest')->name('password.reset');
+Route::get('/reset-password/{token}', [ResetPasswordController::class, 'edit'])->middleware('guest')->name('password.reset');
+Route::post('/reset-password', [ResetPasswordController::class, 'update'])->middleware('guest')->name('password.update');
 
 Route::post('/logout', [LoginController::class, 'destroy'])->middleware('auth')->name('logout');
+
+Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.checkout');
 
 Route::get('/dashboard', [ProfileController::class, 'index'])
     ->middleware('auth')

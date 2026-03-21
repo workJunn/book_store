@@ -28,4 +28,9 @@ class Review extends Model
     {
         return $this->belongsTo(Book::class, 'id_books', 'id_books');
     }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'id_users', 'id_users');
+    }
 }

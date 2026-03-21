@@ -22,7 +22,7 @@
 
             <div class="site-actions">
                 <a href="{{ route('favorites') }}" class="favorites-link" title="Избранное">
-                    ❤
+                    <span class="bookmark-icon" aria-hidden="true"></span>
                     <span class="cart-count" data-favorites-count>0</span>
                 </a>
 
@@ -90,21 +90,20 @@
             <div class="welcome-section-heading">
                 <div>
                     <h2 class="welcome-section-heading__title">Подборки книг</h2>
-                    <p class="welcome-section-heading__text">
-                        Полки показывают по несколько книг за раз и бесконечно переключаются на следующую группу по нажатию стрелок.
-                    </p>
+                    <p class="welcome-section-heading__text">Горизонтальные витрины с быстрым просмотром, ценой и переходом ко всему каталогу.</p>
                 </div>
             </div>
 
             <div class="book-shelves">
                 @foreach($shelves as $shelf)
-                    <section class="book-shelf page-panel" data-book-shelf>
+                    <section class="book-shelf" data-book-shelf>
                         <div class="book-shelf__header">
                             <div>
                                 <h3 class="book-shelf__title">{{ $shelf['title'] }}</h3>
                                 <p class="book-shelf__description">{{ $shelf['description'] }}</p>
                             </div>
 
+                            <a href="{{ route('catalog') }}" class="book-shelf__link">Смотреть все</a>
                         </div>
 
                         <div class="book-shelf__stage">
@@ -115,6 +114,12 @@
                             <div class="book-shelf__viewport" data-shelf-viewport>
                                 <div class="book-shelf__track" data-shelf-track>
                                     @foreach($shelf['books'] as $book)
+                                        @php
+                                            $currentPrice = (float) $book->price;
+                                            $oldPrice = ceil(($currentPrice * 1.2) / 10) * 10;
+                                            $discountPercent = max(10, (int) round((1 - ($currentPrice / $oldPrice)) * 100));
+                                        @endphp
+
                                         <article class="book-shelf__card">
                                             <a href="{{ route('books.show', $book->getKey()) }}" class="book-shelf__image-link">
                                                 <img
@@ -125,32 +130,36 @@
                                             </a>
 
                                             <div class="book-shelf__card-body">
+                                                <div class="book-shelf__price-block">
+                                                    <div class="book-shelf__price-current">{{ number_format($currentPrice, 0, '.', ' ') }} ₽</div>
+                                                    <div class="book-shelf__price-row">
+                                                        <span class="book-shelf__price-old">{{ number_format($oldPrice, 0, '.', ' ') }} ₽</span>
+                                                        <span class="book-shelf__discount">-{{ $discountPercent }}%</span>
+                                                    </div>
+                                                </div>
+
                                                 <a href="{{ route('books.show', $book->getKey()) }}" class="book-shelf__card-title">
                                                     {{ $book->book_name }}
                                                 </a>
-                                                <p class="book-shelf__card-author">{{ $book->author->author_name ?? 'Не указан' }}</p>
-                                                <div class="book-shelf__card-meta">
-                                                    <span class="book-shelf__card-price">{{ number_format((float) $book->price, 0, '.', ' ') }} ₽</span>
-                                                    <span>★ {{ $book->average_rating ?? 0 }}</span>
-                                                </div>
+                                                <p class="book-shelf__card-author">{{ $book->author->author_name ?? 'Автор не указан' }}</p>
 
-                                                <div class="book-card__actions">
+                                                <div class="book-card__actions book-card__actions--storefront">
                                                     @if($book->stock_quantity > 0)
                                                         <button
-                                                            class="btn btn-primary btn-book-action"
+                                                            class="btn btn-primary btn-book-action btn-book-action--storefront"
                                                             data-add-to-cart="{{ $book->getKey() }}"
                                                             type="button"
                                                         >
                                                             В корзину
                                                         </button>
                                                     @else
-                                                        <button class="btn btn-secondary btn-book-action" type="button" disabled>
+                                                        <button class="btn btn-secondary btn-book-action btn-book-action--storefront" type="button" disabled>
                                                             Нет в наличии
                                                         </button>
                                                     @endif
 
                                                     <button
-                                                        class="favorite-button favorite-button--inline"
+                                                        class="favorite-button favorite-button--inline favorite-button--storefront"
                                                         type="button"
                                                         data-favorite-toggle
                                                         data-book-id="{{ $book->getKey() }}"
@@ -162,7 +171,7 @@
                                                         data-book-url="{{ route('books.show', $book->getKey()) }}"
                                                         aria-label="Добавить в избранное"
                                                     >
-                                                        ❤
+                                                        <span class="bookmark-icon bookmark-icon--button" aria-hidden="true"></span>
                                                     </button>
                                                 </div>
                                             </div>
@@ -181,8 +190,6 @@
         </section>
     </main>
 
-    <div id="flash-message" class="flash-message" hidden></div>
-
     <footer class="site-footer">
         <div class="footer-links">
             <a href="#">Правовая информация</a>
@@ -200,14 +207,6 @@
 
         <div class="footer-bottom">
             <div>© Книжный Мир 2024</div>
-
-            <div class="socials">
-                <a href="#">VK</a>
-                <a href="#">X</a>
-                <a href="#">OK</a>
-                <a href="#">TG</a>
-                <a href="#">YT</a>
-            </div>
 
             <div class="app-link">📱 Приложение для Android</div>
         </div>

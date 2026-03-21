@@ -54,7 +54,7 @@ return new class extends Migration
             $table->integer('stock_quantity')->default(0);
             $table->date('publication_date')->nullable();
             $table->integer('number_of_pages');
-            $table->decimal('average_rating', 2, 1)->default(0.0);
+            $table->decimal('average_rating', 3, 2)->default(0.00);
             $table->text('description')->nullable();
             $table->unsignedBigInteger('id_author')->nullable();
             $table->unsignedBigInteger('id_publishers')->nullable();
@@ -102,7 +102,7 @@ return new class extends Migration
         });
 
         if (DB::getDriverName() !== 'sqlite') {
-            DB::statement('ALTER TABLE reviews ADD CONSTRAINT reviews_rating_check CHECK (rating >= 1 AND rating <= 10)');
+            DB::statement('ALTER TABLE reviews ADD CONSTRAINT reviews_rating_check CHECK (rating >= 1 AND rating <= 5)');
         }
 
         // orders

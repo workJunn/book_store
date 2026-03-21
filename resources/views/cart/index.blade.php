@@ -13,7 +13,7 @@
             <a href="{{ route('home') }}" class="site-logo">📚 Книжный Мир</a>
             <div class="site-actions">
                 <a href="{{ route('favorites') }}" class="favorites-link" title="Избранное">
-                    ❤
+                    <span class="bookmark-icon" aria-hidden="true"></span>
                     <span class="cart-count" data-favorites-count>0</span>
                 </a>
                 <a href="{{ route('catalog') }}" class="btn btn-secondary">Назад в каталог</a>

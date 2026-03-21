@@ -26,7 +26,7 @@ class Book extends Model
 
     protected $casts = [
         'price' => 'decimal:2',
-        'average_rating' => 'decimal:1',
+        'average_rating' => 'decimal:2',
         'publication_date' => 'date',
     ];
 
@@ -50,6 +50,16 @@ class Book extends Model
             'id_books',
             'id_genre'
         );
+    }
+
+    public function reviews()
+    {
+        return $this->hasMany(Review::class, 'id_books', 'id_books');
+    }
+
+    public function orderDetails()
+    {
+        return $this->hasMany(OrderDetail::class, 'id_books', 'id_books');
     }
 
     public function toCartItem(): array

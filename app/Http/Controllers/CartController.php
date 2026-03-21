@@ -3,7 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Book;
+use App\Models\Order;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 
 class CartController extends Controller
 {
@@ -140,6 +144,82 @@ class CartController extends Controller
         return response()->json([
             'success' => true,
             'total' => 0,
+            'cart_count' => 0,
+        ]);
+    }
+
+    public function checkout(Request $request): JsonResponse
+    {
+        if (! Auth::check()) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Для оформления заказа войдите в аккаунт.',
+                'requires_auth' => true,
+                'login_url' => route('User_login'),
+            ], 401);
+        }
+
+        $cart = session()->get('cart', []);
+
+        if ($cart === []) {
+            return response()->json([
+                'error' => true,
+                'message' => 'Корзина пуста.',
+            ], 422);
+        }
+
+        $bookIds = array_map('intval', array_keys($cart));
+        $books = Book::query()
+            ->whereIn('id_books', $bookIds)
+            ->get()
+            ->keyBy('id_books');
+
+        foreach ($cart as $bookId => $item) {
+            $book = $books->get((int) $bookId);
+
+            if (! $book) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Одна из книг больше недоступна.',
+                ], 422);
+            }
+
+            if ($item['quantity'] > $book->stock_quantity) {
+                return response()->json([
+                    'error' => true,
+                    'message' => "Недостаточно экземпляров книги \"{$book->book_name}\".",
+                ], 422);
+            }
+        }
+
+        $order = DB::transaction(function () use ($cart, $books) {
+            $order = Order::create([
+                'id_users' => Auth::id(),
+                'status' => 'confirmed',
+                'total_amount' => $this->calculateTotal($cart),
+            ]);
+
+            foreach ($cart as $bookId => $item) {
+                $book = $books->get((int) $bookId);
+
+                $order->details()->create([
+                    'id_books' => $book->getKey(),
+                    'quantity' => $item['quantity'],
+                    'price_per_item' => $book->price,
+                ]);
+
+                $book->decrement('stock_quantity', $item['quantity']);
+            }
+
+            return $order;
+        });
+
+        session()->forget('cart');
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Заказ успешно оформлен.',
+            'order_id' => $order->getKey(),
             'cart_count' => 0,
         ]);
     }
