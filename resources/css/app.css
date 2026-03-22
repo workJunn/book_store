@@ -2074,4 +2074,59 @@ select {
     .book-shelf__arrow--next {
         right: -12px;
     }
+
+    .ratings-cards {
+        flex-wrap: wrap;
+    }
+
+    .rating-card {
+        flex: 1 1 calc(50% - 8px);
+        min-width: 140px;
+    }
+}
+
+.ratings-section {
+    margin-bottom: 24px;
+    padding: 28px;
+    background: #f8fafc;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+}
+
+.ratings-title {
+    margin: 0 0 24px;
+    font-size: 2.5rem;
+    font-weight: 400;
+    color: #1f2937;
+    text-align: center;
+}
+
+.ratings-cards {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+}
+
+.rating-card {
+    flex: 1;
+    max-width: 200px;
+    min-width: 160px;
+    padding: 20px 16px;
+    background: #ffffff;
+    border: 1px solid #000000;
+    border-radius: 10px;
+    text-align: center;
+}
+
+.rating-card__title {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #1f2937;
+    margin-bottom: 8px;
+}
+
+.rating-card__subtitle {
+    font-size: 1rem;
+    font-weight: 400;
+    color: #6b7280;
 }

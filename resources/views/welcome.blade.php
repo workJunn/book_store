@@ -190,6 +190,32 @@
         </section>
     </main>
 
+    <section class="container container-wide">
+        <h3 class="ratings-title">Рейтинги</h3>
+        <div class="ratings-cards">
+            <div class="rating-card">
+                <div class="rating-card__title">Книга месяца</div>
+                <div class="rating-card__subtitle">Март 2026</div>
+            </div>
+            <div class="rating-card">
+                <div class="rating-card__title">Книга года</div>
+                <div class="rating-card__subtitle">2025</div>
+            </div>
+            <div class="rating-card">
+                <div class="rating-card__title">Топ продаж</div>
+                <div class="rating-card__subtitle">В этом месяце</div>
+            </div>
+            <div class="rating-card">
+                <div class="rating-card__title">Бестселлер</div>
+                <div class="rating-card__subtitle">За все время</div>
+            </div>
+            <div class="rating-card">
+                <div class="rating-card__title">Новинка</div>
+                <div class="rating-card__subtitle">2026</div>
+            </div>
+        </div>
+    </section>
+
     <footer class="site-footer">
         <div class="footer-links">
             <a href="#">Правовая информация</a>
