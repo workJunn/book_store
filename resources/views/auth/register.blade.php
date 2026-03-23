@@ -7,10 +7,10 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="page-shell auth-page" data-home-url="{{ route('home') }}">
-    @include('partials.site-header', ['showNav' => false, 'showFavorites' => false, 'showCart' => false, 'showAuthButtons' => false, 'showProfile' => false])
+    @include('partials.site-header', ['showNav' => false, 'showSearch' => false, 'showFavorites' => false, 'showCart' => false, 'showAuthButtons' => false, 'showProfile' => false])
 
     <main class="site-main">
-        <section class="auth-card panel stack-md">
+        <section class="auth-card stack-md">
             <div>
                 <h1 class="section-title">Регистрация</h1>
                 <p class="section-text">Создайте новый аккаунт.</p>
@@ -55,6 +55,14 @@
                     <label for="password_confirmation">Подтвердите пароль</label>
                     <input type="password" id="password_confirmation" name="password_confirmation">
                     @error('password_confirmation')
+                        <p class="error-message">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div class="form-group {{ $errors->has('admin_code') ? 'error' : '' }}">
+                    <label for="admin_code">Код администратора</label>
+                    <input type="password" id="admin_code" name="admin_code" value="{{ old('admin_code') }}">
+                    @error('admin_code')
                         <p class="error-message">{{ $message }}</p>
                     @enderror
                 </div>

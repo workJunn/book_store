@@ -154,3 +154,37 @@ it('shows a readable period title in catalog for quick ranking pages', function 
     $response->assertSee('Рейтинг');
     $response->assertSee('Рейтинг книг на основе оценок пользователей.');
 });
+
+it('redirects header search to the matching book page', function () {
+    $author = Author::create([
+        'author_name' => 'Эрих Мария Ремарк',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'АСТ',
+    ]);
+
+    $book = Book::create([
+        'book_name' => 'Три товарища',
+        'price' => 780.00,
+        'stock_quantity' => 3,
+        'publication_date' => '1936-01-01',
+        'number_of_pages' => 480,
+        'average_rating' => 4.9,
+        'description' => 'Роман о дружбе.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $this->get('/search?search=Три товарища')
+        ->assertRedirect(route('books.show', $book));
+});
+
+it('shows a small notice when header search does not find a book', function () {
+    $response = $this->from('/catalog')->get('/search?search=Несуществующая книга');
+
+    $response->assertRedirect('/catalog');
+
+    $this->followRedirects($response)
+        ->assertSee('Такой книги нет.');
+});

@@ -24,6 +24,7 @@ class BookController extends Controller
 
         return view('welcome', [
             'featuredBooks' => $books->take(4)->values(),
+            'newArrivals' => $this->buildNewArrivals($books),
             'shelves' => $this->buildShelves($books),
             'quickRankings' => $this->buildQuickRankings($books),
         ]);
@@ -86,11 +87,13 @@ class BookController extends Controller
             default => $query->orderBy('book_name'),
         };
 
-        $books = $query->paginate(9)->withQueryString();
+        $books = $query->get();
+        $foundBooksCount = $books->count();
         $genres = Genre::query()->orderBy('genre_name')->get();
 
         return view('catalog', [
             'books' => $books,
+            'foundBooksCount' => $foundBooksCount,
             'genres' => $genres,
             'periodMeta' => $this->getPeriodMeta($periodFilter),
             'filters' => [
@@ -106,6 +109,38 @@ class BookController extends Controller
     public function favorites()
     {
         return view('favorites');
+    }
+
+    public function search(Request $request)
+    {
+        $search = trim((string) $request->string('search'));
+
+        if ($search === '') {
+            return redirect()
+                ->back()
+                ->with('search_error', 'Введите название книги для поиска.');
+        }
+
+        $operator = DB::getDriverName() === 'pgsql' ? 'ilike' : 'like';
+
+        $book = Book::query()
+            ->where('book_name', $operator, $search)
+            ->orWhere('book_name', $operator, '%'.$search.'%')
+            ->orderByRaw(
+                'CASE WHEN '.($operator === 'ilike' ? 'LOWER(book_name) = LOWER(?)' : 'book_name = ?').' THEN 0 ELSE 1 END',
+                [$search]
+            )
+            ->orderBy('book_name')
+            ->first();
+
+        if (! $book) {
+            return redirect()
+                ->back()
+                ->with('search_error', 'Такой книги нет.')
+                ->withInput(['search' => $search]);
+        }
+
+        return redirect()->route('books.show', $book);
     }
 
     public function show($id)
@@ -244,6 +279,26 @@ class BookController extends Controller
         }
 
         return false;
+    }
+
+    private function buildNewArrivals(Collection $books): Collection
+    {
+        $currentYearArrivals = $books
+            ->filter(fn (Book $book) => optional($book->publication_date)?->between(
+                now()->startOfYear(),
+                now()->endOfYear()
+            ))
+            ->sortByDesc(fn (Book $book) => optional($book->publication_date)->timestamp ?? 0)
+            ->values();
+
+        if ($currentYearArrivals->isNotEmpty()) {
+            return $currentYearArrivals->take(10)->values();
+        }
+
+        return $books
+            ->sortByDesc(fn (Book $book) => optional($book->publication_date)->timestamp ?? 0)
+            ->take(10)
+            ->values();
     }
 
     private function buildQuickRankings(Collection $books): Collection
@@ -394,7 +449,7 @@ class BookController extends Controller
         return DB::table('orders_details')
             ->join('orders', 'orders.id_orders', '=', 'orders_details.id_orders')
             ->where('orders_details.id_books', $book->getKey())
-            ->where('orders.status', 'confirmed')
+            ->where('orders.status', 'Оформлен')
             ->pluck('orders.id_users')
             ->unique()
             ->values();

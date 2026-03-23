@@ -12,7 +12,7 @@
 
     <main class="site-main">
         <section class="container">
-            <section class="panel stack-md">
+            <section class="stack-md">
                 <div class="section-head">
                     <div>
                         <h1 class="section-title">Корзина</h1>
@@ -60,7 +60,10 @@
                             <div class="summary-total">
                                 Итого: <span id="cart-total">{{ number_format((float) $total, 0, '.', ' ') }}</span> ₽
                             </div>
-                            <button class="btn btn-primary" data-open-checkout type="button">Оформить заказ</button>
+                            <form method="POST" action="{{ route('cart.checkout') }}">
+                                @csrf
+                                <button class="btn btn-secondary cart-checkout-button" type="submit">Оформить заказ</button>
+                            </form>
                         </div>
                     @else
                         <div class="empty-cart">
@@ -74,18 +77,6 @@
         </section>
     </main>
 
-    <div class="checkout-modal" id="checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkout-title" aria-hidden="true">
-        <div class="checkout-dialog panel" tabindex="-1">
-            <h2 class="section-title" id="checkout-title">Подтвердить заказ</h2>
-            <p class="section-text">
-                После подтверждения корзина будет очищена, а заказ сохранится в системе.
-            </p>
-            <div class="checkout-actions">
-                <button class="btn btn-secondary" data-close-checkout type="button">Отмена</button>
-                <button class="btn btn-primary" data-confirm-checkout type="button">Подтвердить</button>
-            </div>
-        </div>
-    </div>
     <div class="sr-only" id="app-live-region" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>

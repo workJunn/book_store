@@ -47,4 +47,18 @@ class User extends Authenticatable implements CanResetPasswordContract
     {
         return $this->hasMany(Order::class, 'id_users', 'id_users');
     }
+
+    public function role()
+    {
+        return $this->belongsTo(Role::class, 'id_role', 'id_role');
+    }
+
+    public function isAdmin(): bool
+    {
+        if ($this->relationLoaded('role')) {
+            return $this->role?->role_name === 'admin';
+        }
+
+        return $this->role()->where('role_name', 'admin')->exists();
+    }
 }

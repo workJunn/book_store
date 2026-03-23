@@ -12,7 +12,7 @@
 
     <main class="site-main">
         <section class="container stack-lg">
-            <section class="panel stack-md">
+            <section class="stack-md">
                 <a href="{{ route('catalog') }}" class="text-link">← Назад в каталог</a>
 
                 @php
@@ -122,13 +122,13 @@
                 </div>
             </section>
 
-            <section class="panel stack-lg">
+            <section class="stack-lg">
                 <div class="reviews-hub" data-reviews-hub>
                     <div class="reviews-tabs" role="tablist" aria-label="Отзывы и рецензии">
-                        <button class="reviews-tab is-active" type="button" role="tab" id="reviews-tab-users" aria-selected="true" aria-controls="reviews-panel-users" tabindex="0" data-reviews-tab-trigger="users">
+                        <button class="reviews-tab is-active" type="button" role="tab" id="reviews-tab-users" aria-selected="true" aria-controls="reviews-pane-users" tabindex="0" data-reviews-tab-trigger="users">
                             Отзывы читателей <span class="reviews-tab__count">{{ $reviews->count() }}</span>
                         </button>
-                        <button class="reviews-tab" type="button" role="tab" id="reviews-tab-external" aria-selected="false" aria-controls="reviews-panel-external" tabindex="-1" data-reviews-tab-trigger="external">
+                        <button class="reviews-tab" type="button" role="tab" id="reviews-tab-external" aria-selected="false" aria-controls="reviews-pane-external" tabindex="-1" data-reviews-tab-trigger="external">
                             Рецензии с платформы <span class="reviews-tab__count">{{ $externalReviews->count() }}</span>
                         </button>
                     </div>
@@ -147,7 +147,7 @@
                         </form>
                     </div>
 
-                    <div class="reviews-panel is-active" id="reviews-panel-users" role="tabpanel" aria-labelledby="reviews-tab-users" data-reviews-tab-panel="users">
+                    <div class="reviews-pane is-active" id="reviews-pane-users" role="tabpanel" aria-labelledby="reviews-tab-users" data-reviews-tab-pane="users">
                         <div class="book-reviews-list">
                             @forelse($reviews as $review)
                                 @php
@@ -192,7 +192,7 @@
                         </div>
                     </div>
 
-                    <div class="reviews-panel" id="reviews-panel-external" role="tabpanel" aria-labelledby="reviews-tab-external" data-reviews-tab-panel="external" hidden>
+                    <div class="reviews-pane" id="reviews-pane-external" role="tabpanel" aria-labelledby="reviews-tab-external" data-reviews-tab-pane="external" hidden>
                         <div class="book-reviews-list">
                             @foreach($externalReviews as $review)
                                 <article class="review-card">
@@ -240,7 +240,7 @@
                             $shouldOpenReviewForm = $errors->has('rating') || $errors->has('review_text') || session('status');
                         @endphp
 
-                        <details class="review-form-toggle" id="review-form-panel" @if($shouldOpenReviewForm) open @endif>
+                        <details class="review-form-toggle" id="review-form-details" @if($shouldOpenReviewForm) open @endif>
                             <summary class="btn btn-primary review-form-toggle__button">
                                 <span class="review-form-toggle__text">{{ $userReview ? 'Изменить комментарий' : 'Написать комментарий' }}</span>
                                 <span class="review-form-toggle__icon" aria-hidden="true">+</span>

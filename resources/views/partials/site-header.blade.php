@@ -1,13 +1,26 @@
 <header class="site-header">
     <div class="container site-header__inner">
-        <a href="{{ route('home') }}" class="site-logo">Книжный Мир</a>
+        <div class="site-brand">
+            <a href="{{ route('home') }}" class="site-logo">Книжный Мир</a>
 
-        @if(($showNav ?? true) === true)
-            <nav class="site-nav" aria-label="Основная навигация">
-                <a href="{{ route('home') }}">Главная</a>
-                <a href="{{ route('catalog') }}">Каталог</a>
-                <a href="{{ route('favorites') }}">Избранное</a>
-            </nav>
+            @if(($showNav ?? true) === true)
+                <nav class="site-nav" aria-label="Основная навигация">
+                    <a href="{{ route('catalog') }}">Каталог</a>
+                </nav>
+            @endif
+        </div>
+
+        @if(($showSearch ?? true) === true)
+            <form method="GET" action="{{ route('books.search') }}" class="site-search" role="search">
+                <label for="site-search-input" class="sr-only">Поиск книг</label>
+                <input
+                    id="site-search-input"
+                    type="search"
+                    name="search"
+                    value="{{ old('search', request('search', '')) }}"
+                    placeholder="Поиск книг"
+                >
+            </form>
         @endif
 
         <div class="site-actions">
@@ -45,4 +58,10 @@
             @endauth
         </div>
     </div>
+
+    @if (session('search_error'))
+        <div class="container">
+            <div class="site-search-notice" role="alert">{{ session('search_error') }}</div>
+        </div>
+    @endif
 </header>

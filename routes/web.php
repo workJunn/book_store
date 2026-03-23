@@ -8,11 +8,13 @@ use App\Http\Controllers\Auth\ResetPasswordController;
 use App\Http\Controllers\BookController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\AdminController;
 
 
 
 Route::get('/', [BookController::class, 'welcome'])->name('home');
 Route::get('/catalog', [BookController::class, 'catalog'])->name('catalog');
+Route::get('/search', [BookController::class, 'search'])->name('books.search');
 Route::get('/favorites', [BookController::class, 'favorites'])->name('favorites');
 Route::get('/books/{book}', [BookController::class, 'show'])->name('books.show');
 Route::post('/books/{book}/reviews', [BookController::class, 'storeReview'])->middleware('auth')->name('books.reviews.store');
@@ -23,6 +25,9 @@ Route::post('/cart/remove/{id}', [CartController::class, 'remove'])->name('cart.
 Route::post('/cart/increase/{id}', [CartController::class, 'increase'])->name('cart.increase');
 Route::post('/cart/decrease/{id}', [CartController::class, 'decrease'])->name('cart.decrease');
 Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear');
+Route::get('/orders/{order}/payment', [CartController::class, 'payment'])->middleware('auth')->name('orders.payment');
+Route::post('/orders/{order}/pay', [CartController::class, 'pay'])->middleware('auth')->name('orders.pay');
+Route::get('/orders/{order}', [ProfileController::class, 'showOrder'])->middleware('auth')->name('orders.show');
 
 Route::get('/register', [RegisterController::class, 'create'])->middleware('guest')->name('register');
 Route::post('/register', [RegisterController::class, 'store'])->middleware('guest');
@@ -42,3 +47,48 @@ Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.c
 Route::get('/dashboard', [ProfileController::class, 'index'])
     ->middleware('auth')
     ->name('dashboard');
+Route::get('/admin', [AdminController::class, 'index'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.index');
+Route::get('/admin/search', [AdminController::class, 'search'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.search');
+Route::get('/admin/authors', [AdminController::class, 'authors'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.authors.index');
+Route::get('/admin/authors/{author}', [AdminController::class, 'showAuthor'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.authors.show');
+Route::get('/admin/users', [AdminController::class, 'users'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.users.index');
+Route::get('/admin/users/{user}', [AdminController::class, 'showUser'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.users.show');
+Route::delete('/admin/users/{user}', [AdminController::class, 'destroyUser'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.users.destroy');
+Route::get('/admin/books', [AdminController::class, 'books'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.books.index');
+Route::get('/admin/books/create', [AdminController::class, 'createBook'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.books.create');
+Route::post('/admin/books', [AdminController::class, 'storeBook'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.books.store');
+Route::get('/admin/books/{book}/edit', [AdminController::class, 'editBook'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.books.edit');
+Route::match(['put', 'patch'], '/admin/books/{book}', [AdminController::class, 'updateBook'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.books.update');
+Route::delete('/admin/books/{book}', [AdminController::class, 'destroyBook'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.books.destroy');
+Route::get('/admin/orders', [AdminController::class, 'orders'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.orders.index');
+Route::get('/admin/orders/{order}', [AdminController::class, 'showOrder'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.orders.show');

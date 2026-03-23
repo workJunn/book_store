@@ -12,7 +12,7 @@
 
     <main class="site-main">
         <section class="container">
-            <section class="panel stack-md">
+            <section class="stack-md">
                 <div class="section-head">
                     <div>
                         <h1 class="section-title">Избранные книги</h1>

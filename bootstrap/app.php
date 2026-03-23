@@ -11,6 +11,10 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->alias([
+            'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+        ]);
+
         // // 🔹 Куда перенаправлять гостей (неавторизованных) fn () это просто стрелочная функция 
         // $middleware->redirectGuestsTo(fn () => route('User_login'));
         // // 🔹 Куда перенаправлять после успешного входа
@@ -20,7 +24,7 @@ return Application::configure(basePath: dirname(__DIR__))
             return route('User_login');
         });
         $middleware->redirectUsersTo(function () {
-            return route('dashboard');
+            return auth()->user()?->isAdmin() ? route('admin.index') : route('dashboard');
         });
     })
     ->withExceptions(function (Exceptions $exceptions): void {

@@ -148,24 +148,62 @@ class CartController extends Controller
         ]);
     }
 
-    public function checkout(Request $request): JsonResponse
+    public function payment(Order $order)
+    {
+        abort_unless((int) $order->id_users === (int) Auth::id(), 403);
+
+        $order->load(['details.book', 'user']);
+
+        return view('orders.payment', [
+            'order' => $order,
+            'orderDetails' => $order->details,
+            'user' => $order->user,
+        ]);
+    }
+
+    public function pay(Order $order)
+    {
+        abort_unless((int) $order->id_users === (int) Auth::id(), 403);
+
+        if ($order->status !== 'Оплачен') {
+            $order->update([
+                'status' => 'Оплачен',
+            ]);
+        }
+
+        return redirect()
+            ->route('dashboard')
+            ->with('status', 'Оплата прошла успешно.');
+    }
+
+    public function checkout(Request $request)
     {
         if (! Auth::check()) {
-            return response()->json([
-                'error' => true,
-                'message' => 'Для оформления заказа войдите в аккаунт.',
-                'requires_auth' => true,
-                'login_url' => route('User_login'),
-            ], 401);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Для оформления заказа войдите в аккаунт.',
+                    'requires_auth' => true,
+                    'login_url' => route('User_login'),
+                ], 401);
+            }
+
+            return redirect()->route('User_login');
         }
 
         $cart = session()->get('cart', []);
 
         if ($cart === []) {
-            return response()->json([
-                'error' => true,
-                'message' => 'Корзина пуста.',
-            ], 422);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'error' => true,
+                    'message' => 'Корзина пуста.',
+                ], 422);
+            }
+
+            return redirect()
+                ->route('cart.index')
+                ->with('search_error', 'Корзина пуста.');
         }
 
         $bookIds = array_map('intval', array_keys($cart));
@@ -178,24 +216,36 @@ class CartController extends Controller
             $book = $books->get((int) $bookId);
 
             if (! $book) {
-                return response()->json([
-                    'error' => true,
-                    'message' => 'Одна из книг больше недоступна.',
-                ], 422);
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'error' => true,
+                        'message' => 'Одна из книг больше недоступна.',
+                    ], 422);
+                }
+
+                return redirect()
+                    ->route('cart.index')
+                    ->with('search_error', 'Одна из книг больше недоступна.');
             }
 
             if ($item['quantity'] > $book->stock_quantity) {
-                return response()->json([
-                    'error' => true,
-                    'message' => "Недостаточно экземпляров книги \"{$book->book_name}\".",
-                ], 422);
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'error' => true,
+                        'message' => "Недостаточно экземпляров книги \"{$book->book_name}\".",
+                    ], 422);
+                }
+
+                return redirect()
+                    ->route('cart.index')
+                    ->with('search_error', "Недостаточно экземпляров книги \"{$book->book_name}\".");
             }
         }
 
         $order = DB::transaction(function () use ($cart, $books) {
             $order = Order::create([
                 'id_users' => Auth::id(),
-                'status' => 'confirmed',
+                'status' => 'Оформлен',
                 'total_amount' => $this->calculateTotal($cart),
             ]);
 
@@ -216,12 +266,16 @@ class CartController extends Controller
 
         session()->forget('cart');
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Заказ успешно оформлен.',
-            'order_id' => $order->getKey(),
-            'cart_count' => 0,
-        ]);
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Заказ успешно оформлен.',
+                'order_id' => $order->getKey(),
+                'cart_count' => 0,
+            ]);
+        }
+
+        return redirect()->route('orders.payment', $order);
     }
 
     private function calculateTotal(array $cart): float

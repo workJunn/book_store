@@ -89,7 +89,7 @@ it('creates an order from the cart and decrements stock', function () {
 
     $this->assertDatabaseHas('orders', [
         'id_users' => $user->getKey(),
-        'status' => 'confirmed',
+        'status' => 'Оформлен',
         'total_amount' => 1200,
     ]);
 
@@ -104,4 +104,88 @@ it('creates an order from the cart and decrements stock', function () {
 
     expect($book->fresh()->stock_quantity)->toBe(2);
     expect(session('cart', []))->toBe([]);
+});
+
+it('redirects browser checkout to the payment page with order data', function () {
+    $user = User::factory()->create([
+        'name' => 'Иван Петров',
+        'email' => 'ivan@example.com',
+        'phone_number' => '+79991234567',
+    ]);
+
+    $book = createBookForCart([
+        'stock_quantity' => 3,
+        'price' => 500.00,
+    ]);
+
+    $item = $book->toCartItem();
+    $item['quantity'] = 2;
+
+    $response = $this->actingAs($user)->withSession([
+        'cart' => [
+            $book->getKey() => $item,
+        ],
+    ])->post('/cart/checkout');
+
+    $order = \App\Models\Order::query()->firstOrFail();
+
+    $response->assertRedirect(route('orders.payment', $order));
+
+    $this->get(route('orders.payment', $order))
+        ->assertOk()
+        ->assertSee('Оплата заказа')
+        ->assertSee('Иван Петров')
+        ->assertSee('ivan@example.com')
+        ->assertSee('+79991234567')
+        ->assertSee('Оформлен')
+        ->assertSee('Палата №6')
+        ->assertSee('Количество: 2');
+});
+
+it('marks order as paid and shows it in the user profile', function () {
+    $user = User::factory()->create([
+        'name' => 'Мария Соколова',
+        'email' => 'maria@example.com',
+    ]);
+
+    $book = createBookForCart([
+        'stock_quantity' => 2,
+        'price' => 700.00,
+    ]);
+
+    $item = $book->toCartItem();
+    $item['quantity'] = 1;
+
+    $this->actingAs($user)->withSession([
+        'cart' => [
+            $book->getKey() => $item,
+        ],
+    ])->post('/cart/checkout');
+
+    $order = \App\Models\Order::query()->firstOrFail();
+
+    $response = $this->actingAs($user)->post(route('orders.pay', $order));
+
+    $response->assertRedirect(route('dashboard'));
+    $response->assertSessionHas('status', 'Оплата прошла успешно.');
+
+    $this->assertDatabaseHas('orders', [
+        'id_orders' => $order->getKey(),
+        'status' => 'Оплачен',
+    ]);
+
+    $this->actingAs($user)->get(route('dashboard'))
+        ->assertOk()
+        ->assertSee('Мои заказы')
+        ->assertSee('Заказ №' . $order->getKey())
+        ->assertSee(number_format((float) $order->total_amount, 0, '.', ' ') . ' ₽')
+        ->assertDontSee('Палата №6')
+        ->assertDontSee('Оплачен');
+
+    $this->actingAs($user)->get(route('orders.show', $order))
+        ->assertOk()
+        ->assertSee('Заказ №' . $order->getKey())
+        ->assertSee('Оплачен')
+        ->assertSee('Палата №6')
+        ->assertSee('Количество: 1');
 });

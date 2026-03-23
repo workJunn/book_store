@@ -10,7 +10,7 @@
     @include('partials.site-header', ['showNav' => false, 'showFavorites' => false, 'showCart' => false, 'showAuthButtons' => false, 'showProfile' => false])
 
     <main class="site-main">
-        <section class="auth-card panel stack-md">
+        <section class="auth-card stack-md">
             <div>
                 <h1 class="section-title">Сброс пароля</h1>
                 <p class="section-text">Введите email для восстановления доступа.</p>

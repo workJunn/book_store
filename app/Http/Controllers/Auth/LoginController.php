@@ -33,7 +33,7 @@ class LoginController extends Controller
 
         $request->session()->regenerate();
 
-        return redirect()->intended(route('dashboard'));
+        return redirect()->intended(Auth::user()?->isAdmin() ? route('admin.index') : route('dashboard'));
     }
 
     public function destroy(Request $request)

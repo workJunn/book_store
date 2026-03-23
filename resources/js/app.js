@@ -257,6 +257,34 @@ function closeCheckoutModal() {
     }
 }
 
+function openDeleteUserModal() {
+    const modal = document.getElementById('delete-user-modal');
+
+    if (!modal) {
+        return;
+    }
+
+    lastFocusedElement = document.activeElement;
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    modal.querySelector('.checkout-dialog')?.focus();
+}
+
+function closeDeleteUserModal() {
+    const modal = document.getElementById('delete-user-modal');
+
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+
+    if (lastFocusedElement instanceof HTMLElement) {
+        lastFocusedElement.focus();
+    }
+}
+
 async function updateCartItem(id, action) {
     try {
         const data = await postJson(`/cart/${action}/${id}`);
@@ -379,16 +407,20 @@ function getShelfPageSize() {
 function initBookShelves() {
     document.querySelectorAll('[data-book-shelf]').forEach((shelf) => {
         const track = shelf.querySelector('[data-shelf-track]');
+        const viewport = shelf.querySelector('[data-shelf-viewport]');
 
-        if (!track || !track.children.length) {
+        if (!track || !viewport || !track.children.length) {
             return;
         }
 
         const cards = Array.from(track.children).map((card) => card.outerHTML);
         let startIndex = 0;
         let pageSize = getShelfPageSize();
+        let touchStartX = null;
+        let touchCurrentX = null;
+        let hasRendered = false;
 
-        const renderPage = () => {
+        const renderPage = (withAnimation = true) => {
             const visibleCards = [];
 
             for (let index = 0; index < pageSize; index += 1) {
@@ -398,7 +430,14 @@ function initBookShelves() {
 
             track.innerHTML = visibleCards.join('');
             track.style.setProperty('--shelf-columns', String(pageSize));
+            if (withAnimation && hasRendered) {
+                track.classList.remove('is-animating');
+                // Force reflow so the animation can restart on repeated renders.
+                void track.offsetWidth;
+                track.classList.add('is-animating');
+            }
             syncFavoriteButtons();
+            hasRendered = true;
         };
 
         const syncPageSize = () => {
@@ -413,7 +452,7 @@ function initBookShelves() {
             renderPage();
         };
 
-        renderPage();
+        renderPage(false);
         window.addEventListener('resize', syncPageSize);
 
         shelf.querySelectorAll('[data-shelf-direction]').forEach((button) => {
@@ -423,6 +462,34 @@ function initBookShelves() {
                 renderPage();
             });
         });
+
+        viewport.addEventListener('touchstart', (event) => {
+            touchStartX = event.touches[0]?.clientX ?? null;
+            touchCurrentX = touchStartX;
+        }, { passive: true });
+
+        viewport.addEventListener('touchmove', (event) => {
+            touchCurrentX = event.touches[0]?.clientX ?? touchCurrentX;
+        }, { passive: true });
+
+        viewport.addEventListener('touchend', () => {
+            if (touchStartX === null || touchCurrentX === null) {
+                touchStartX = null;
+                touchCurrentX = null;
+                return;
+            }
+
+            const deltaX = touchCurrentX - touchStartX;
+
+            if (Math.abs(deltaX) >= 40) {
+                const direction = deltaX < 0 ? 1 : -1;
+                startIndex = (startIndex + direction + cards.length * 10) % cards.length;
+                renderPage();
+            }
+
+            touchStartX = null;
+            touchCurrentX = null;
+        }, { passive: true });
     });
 }
 
@@ -434,7 +501,7 @@ function initReviewsHub() {
     }
 
     const triggers = Array.from(hub.querySelectorAll('[data-reviews-tab-trigger]'));
-    const panels = Array.from(hub.querySelectorAll('[data-reviews-tab-panel]'));
+    const panes = Array.from(hub.querySelectorAll('[data-reviews-tab-pane]'));
 
     const activateTab = (tabName) => {
         triggers.forEach((trigger) => {
@@ -444,10 +511,10 @@ function initReviewsHub() {
             trigger.setAttribute('tabindex', isActive ? '0' : '-1');
         });
 
-        panels.forEach((panel) => {
-            const isActive = panel.dataset.reviewsTabPanel === tabName;
-            panel.classList.toggle('is-active', isActive);
-            panel.hidden = !isActive;
+        panes.forEach((pane) => {
+            const isActive = pane.dataset.reviewsTabPane === tabName;
+            pane.classList.toggle('is-active', isActive);
+            pane.hidden = !isActive;
         });
     };
 
@@ -484,7 +551,7 @@ function initReviewsHub() {
 
     document.querySelectorAll('[data-open-review-form]').forEach((button) => {
         button.addEventListener('click', () => {
-            const reviewForm = document.getElementById('review-form-panel');
+            const reviewForm = document.getElementById('review-form-details');
 
             if (!reviewForm) {
                 return;
@@ -541,21 +608,48 @@ document.addEventListener('click', (event) => {
         return;
     }
 
+    if (event.target.closest('[data-open-user-delete]')) {
+        openDeleteUserModal();
+        return;
+    }
+
+    if (event.target.closest('[data-close-user-delete]')) {
+        closeDeleteUserModal();
+        return;
+    }
+
     const modal = document.getElementById('checkout-modal');
     if (modal && event.target === modal) {
         closeCheckoutModal();
+        return;
+    }
+
+    const deleteUserModal = document.getElementById('delete-user-modal');
+    if (deleteUserModal && event.target === deleteUserModal) {
+        closeDeleteUserModal();
     }
 });
 
 document.addEventListener('keydown', (event) => {
     const modal = document.getElementById('checkout-modal');
+    const deleteUserModal = document.getElementById('delete-user-modal');
 
-    if (!modal || !modal.classList.contains('is-open')) {
+    const activeModal = modal?.classList.contains('is-open')
+        ? modal
+        : deleteUserModal?.classList.contains('is-open')
+            ? deleteUserModal
+            : null;
+
+    if (!activeModal) {
         return;
     }
 
     if (event.key === 'Escape') {
-        closeCheckoutModal();
+        if (activeModal === modal) {
+            closeCheckoutModal();
+        } else {
+            closeDeleteUserModal();
+        }
         return;
     }
 
@@ -564,7 +658,7 @@ document.addEventListener('keydown', (event) => {
     }
 
     const focusableElements = Array.from(
-        modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+        activeModal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
     ).filter((element) => !element.hasAttribute('disabled'));
 
     if (!focusableElements.length) {
