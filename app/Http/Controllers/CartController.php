@@ -184,11 +184,11 @@ class CartController extends Controller
                     'error' => true,
                     'message' => 'Для оформления заказа войдите в аккаунт.',
                     'requires_auth' => true,
-                    'login_url' => route('User_login'),
+                    'login_url' => route('login'),
                 ], 401);
             }
 
-            return redirect()->route('User_login');
+            return redirect()->route('login');
         }
 
         $cart = session()->get('cart', []);

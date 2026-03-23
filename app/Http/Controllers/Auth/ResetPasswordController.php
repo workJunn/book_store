@@ -42,6 +42,6 @@ class ResetPasswordController extends Controller
             ]);
         }
 
-        return redirect()->route('User_login')->with('status', 'Пароль успешно изменен.');
+        return redirect()->route('login')->with('status', 'Пароль успешно изменен.');
     }
 }

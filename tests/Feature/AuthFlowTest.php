@@ -27,27 +27,6 @@ it('registers a new user and authenticates them', function () {
     expect(Hash::check('secret123', $user->password))->toBeTrue();
 });
 
-it('registers an admin with the correct code and redirects to admin panel', function () {
-    config()->set('app.env', 'testing');
-    putenv('ADMIN_REGISTRATION_CODE=admin-secret');
-
-    $response = $this->post('/register', [
-        'name' => 'Администратор',
-        'email' => 'admin@example.com',
-        'phone_number' => '+79990000001',
-        'password' => 'secret123',
-        'password_confirmation' => 'secret123',
-        'admin_code' => 'admin-secret',
-    ]);
-
-    $response->assertRedirect(route('admin.index'));
-
-    $admin = User::where('email', 'admin@example.com')->firstOrFail()->load('role');
-
-    expect($admin->isAdmin())->toBeTrue();
-    expect($admin->role->role_name)->toBe('admin');
-});
-
 it('logs in an existing user', function () {
     $user = User::factory()->create([
         'email' => 'reader@example.com',
@@ -118,7 +97,7 @@ it('shows the reset password form and updates the password', function () {
         'password_confirmation' => 'new-secret123',
     ]);
 
-    $response->assertRedirect(route('User_login'));
+    $response->assertRedirect(route('login'));
     $response->assertSessionHas('status');
 
     expect(Hash::check('new-secret123', $user->fresh()->password))->toBeTrue();

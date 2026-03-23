@@ -59,18 +59,10 @@
                     @enderror
                 </div>
 
-                <div class="form-group {{ $errors->has('admin_code') ? 'error' : '' }}">
-                    <label for="admin_code">Код администратора</label>
-                    <input type="password" id="admin_code" name="admin_code" value="{{ old('admin_code') }}">
-                    @error('admin_code')
-                        <p class="error-message">{{ $message }}</p>
-                    @enderror
-                </div>
-
                 <button type="submit" class="btn btn-primary btn-block">Зарегистрироваться</button>
             </form>
 
-            <p class="auth-footer">Уже есть аккаунт? <a href="{{ route('User_login') }}">Войти</a></p>
+            <p class="auth-footer">Уже есть аккаунт? <a href="{{ route('login') }}">Войти</a></p>
         </section>
     </main>
 </body>

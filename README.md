@@ -1,59 +1,88 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Book Store
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Интернет-магазин книг на Laravel 12, Blade и Vite. Проект включает публичную витрину, каталог, карточку книги с отзывами, корзину, оформление и оплату заказа, личный кабинет пользователя и отдельную админ-панель.
 
-## About Laravel
+## Возможности
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+- главная страница с подборками и быстрыми рейтингами
+- каталог книг с категориями и фильтрацией
+- поиск книги из хедера с переходом на карточку книги
+- карточка книги с отзывами и рейтингом
+- корзина и оформление заказа
+- страница оплаты и история заказов в профиле
+- регистрация, вход и восстановление пароля
+- админ-панель с разделами авторов, заказов, пользователей и поиском по админке
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Стек
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+- PHP 8.2+
+- Laravel 12
+- Blade
+- Vite
+- Pest
+- SQLite для тестов
 
-## Learning Laravel
+## Запуск проекта
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+1. Установить зависимости:
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+```bash
+composer install
+npm install
+```
 
-## Laravel Sponsors
+2. Создать конфиг окружения:
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+```bash
+cp .env.example .env
+php artisan key:generate
+```
 
-### Premium Partners
+3. Настроить базу данных в `.env`.
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+4. Применить миграции:
 
-## Contributing
+```bash
+php artisan migrate
+```
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+5. Запустить приложение:
 
-## Code of Conduct
+```bash
+php artisan serve
+npm run dev
+```
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Тесты
 
-## Security Vulnerabilities
+```bash
+php artisan test
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+На текущий момент проект проходит 29 feature/unit тестов.
 
-## License
+## Администратор
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+Обычная регистрация создаёт только стандартного пользователя. Доступ в админ-панель есть только у пользователей, у которых в базе уже назначена роль `admin`.
+
+## Основные маршруты
+
+- `/` — главная страница
+- `/catalog` — каталог
+- `/cart` — корзина
+- `/dashboard` — профиль пользователя
+- `/admin` — админ-панель
+
+## Структура
+
+- [routes/web.php](/home/abdullo/book_store/routes/web.php) — веб-маршруты
+- [app/Http/Controllers/BookController.php](/home/abdullo/book_store/app/Http/Controllers/BookController.php) — витрина, каталог, книга, отзывы
+- [app/Http/Controllers/CartController.php](/home/abdullo/book_store/app/Http/Controllers/CartController.php) — корзина, checkout, оплата
+- [app/Http/Controllers/AdminController.php](/home/abdullo/book_store/app/Http/Controllers/AdminController.php) — админский интерфейс
+- [tests/Feature](/home/abdullo/book_store/tests/Feature) — основные feature-тесты
+
+## Ограничения текущей версии
+
+- часть витринной логики сосредоточена в контроллерах
+- остатки при checkout пока не защищены от конкурентных заказов на уровне блокировок БД
+- фронтенд построен на Blade-шаблонах и общем CSS без выделенного дизайн-системного слоя

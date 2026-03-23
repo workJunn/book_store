@@ -20,7 +20,7 @@
                 <div class="success-message">{{ session('status') }}</div>
             @endif
 
-            <form method="POST" action="{{ route('User_login') }}" autocomplete="off" novalidate>
+            <form method="POST" action="{{ route('login') }}" autocomplete="off" novalidate>
                 @csrf
 
                 <div class="form-group {{ $errors->has('email') ? 'error' : '' }}">

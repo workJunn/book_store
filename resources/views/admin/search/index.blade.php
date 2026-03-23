@@ -9,13 +9,7 @@
 <body class="page-shell page-shell--column admin-page" data-home-url="{{ route('home') }}">
     <main class="site-main">
         <section class="container stack-lg">
-            <section class="section-head section-head--admin">
-                <div>
-                    <h1 class="section-title">Поиск</h1>
-                </div>
-                @include('partials.admin-search')
-                @include('partials.admin-nav')
-            </section>
+            @include('partials.admin-page-head', ['title' => 'Поиск'])
 
             @php
                 $hasResults = $users->isNotEmpty() || $authors->isNotEmpty() || $books->isNotEmpty() || ($showOrders && $orders->isNotEmpty());

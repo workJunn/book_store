@@ -291,7 +291,7 @@
                     @else
                         <div class="empty-state">
                             <p>Чтобы оставить комментарий, нужно войти в аккаунт.</p>
-                            <a href="{{ route('User_login') }}" class="btn btn-primary">Войти</a>
+                            <a href="{{ route('login') }}" class="btn btn-primary">Войти</a>
                         </div>
                     @endauth
                 </div>
