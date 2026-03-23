@@ -8,124 +8,84 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="page-shell page-shell--column" data-page="cart" data-home-url="{{ route('catalog') }}">
-    <header class="site-header">
-        <div class="site-header__inner container">
-            <a href="{{ route('home') }}" class="site-logo">📚 Книжный Мир</a>
-            <div class="site-actions">
-                <a href="{{ route('favorites') }}" class="favorites-link" title="Избранное">
-                    <span class="bookmark-icon" aria-hidden="true"></span>
-                    <span class="cart-count" data-favorites-count>0</span>
-                </a>
-                <a href="{{ route('catalog') }}" class="btn btn-secondary">Назад в каталог</a>
-            </div>
-        </div>
-    </header>
+    @include('partials.site-header', ['showCatalogButton' => true, 'showAuthButtons' => false, 'showProfile' => false])
 
     <main class="site-main">
-        <div class="container">
-            <div class="cart-page page-panel">
-                <h1 class="page-heading page-heading--dark">Корзина</h1>
-
-                @if(count($cart) > 0)
-                    <div class="cart-toolbar" id="top-buttons">
-                        <button data-clear-cart class="btn btn-danger" type="button">
-                            Очистить корзину
-                        </button>
+        <section class="container">
+            <section class="panel stack-md">
+                <div class="section-head">
+                    <div>
+                        <h1 class="section-title">Корзина</h1>
+                        <p class="section-text">Проверьте состав заказа перед оформлением.</p>
                     </div>
-                @endif
+
+                    @if(count($cart) > 0)
+                        <div class="cart-toolbar" id="top-buttons">
+                            <button data-clear-cart class="btn btn-danger" type="button">Очистить корзину</button>
+                        </div>
+                    @endif
+                </div>
 
                 @if(session('success'))
-                    <div class="success-box">
-                        {{ session('success') }}
-                    </div>
+                    <div class="success-box">{{ session('success') }}</div>
                 @endif
 
                 <div id="cart-content">
                     @if(count($cart))
                         <div id="cart-items" class="cart-list">
                             @foreach($cart as $item)
-                                <div class="cart-item" id="item-{{ $item['id'] }}">
+                                <article class="cart-item" id="item-{{ $item['id'] }}">
                                     <img src="{{ $item['image'] }}" class="cart-image" alt="{{ $item['title'] }}">
 
-                                    <div>
+                                    <div class="stack-sm">
                                         <div class="cart-title">{{ $item['title'] }}</div>
-                                        <div class="cart-author">{{ $item['author'] }}</div>
-                                        <div class="cart-price">{{ $item['price'] }} ₽</div>
+                                        <div class="muted">{{ $item['author'] }}</div>
+                                        <div class="price">{{ number_format((float) $item['price'], 0, '.', ' ') }} ₽</div>
 
                                         <div class="qty-controls">
-                                            <button
-                                                class="qty-btn qty-btn-minus"
-                                                data-cart-action="decrease"
-                                                data-item-id="{{ $item['id'] }}"
-                                                type="button"
-                                            >
-                                                -
-                                            </button>
-
-                                            <div class="qty-value" id="qty-{{ $item['id'] }}">
-                                                {{ $item['quantity'] }}
-                                            </div>
-
-                                            <button
-                                                class="qty-btn qty-btn-plus"
-                                                data-cart-action="increase"
-                                                data-item-id="{{ $item['id'] }}"
-                                                type="button"
-                                            >
-                                                +
-                                            </button>
+                                            <button class="qty-btn qty-btn-minus" data-cart-action="decrease" data-item-id="{{ $item['id'] }}" type="button" aria-label="Уменьшить количество {{ $item['title'] }}">-</button>
+                                            <div class="qty-value" id="qty-{{ $item['id'] }}">{{ $item['quantity'] }}</div>
+                                            <button class="qty-btn qty-btn-plus" data-cart-action="increase" data-item-id="{{ $item['id'] }}" type="button" aria-label="Увеличить количество {{ $item['title'] }}">+</button>
                                         </div>
                                     </div>
 
-                                    <div>
-                                        <div class="item-total" id="item-total-{{ $item['id'] }}">
-                                            {{ $item['price'] * $item['quantity'] }} ₽
-                                        </div>
+                                    <div class="item-total" id="item-total-{{ $item['id'] }}">
+                                        {{ number_format((float) ($item['price'] * $item['quantity']), 0, '.', ' ') }} ₽
                                     </div>
-                                </div>
+                                </article>
                             @endforeach
                         </div>
 
                         <div class="summary">
                             <div class="summary-total">
-                                Итого:
-                                <span id="cart-total">{{ $total }}</span>
-                                ₽
+                                Итого: <span id="cart-total">{{ number_format((float) $total, 0, '.', ' ') }}</span> ₽
                             </div>
-
-                            <button class="btn btn-primary" data-open-checkout type="button">
-                                Оформить заказ
-                            </button>
+                            <button class="btn btn-primary" data-open-checkout type="button">Оформить заказ</button>
                         </div>
                     @else
                         <div class="empty-cart">
                             <h2>Корзина пуста</h2>
-                            <p>Добавьте книги из каталога</p>
+                            <p>Добавьте книги из каталога.</p>
                             <a href="{{ route('catalog') }}" class="btn btn-primary">Перейти в каталог</a>
                         </div>
                     @endif
                 </div>
-            </div>
-        </div>
+            </section>
+        </section>
     </main>
 
-    <div class="checkout-modal" id="checkout-modal">
-        <div class="checkout-dialog">
-            <h2 class="checkout-title">Подтвердить заказ</h2>
-            <p class="checkout-text">
-                Это интерфейсное подтверждение без подключения платежной системы.
-                После подтверждения корзина будет очищена, а заказ будет считаться оформленным.
+    <div class="checkout-modal" id="checkout-modal" role="dialog" aria-modal="true" aria-labelledby="checkout-title" aria-hidden="true">
+        <div class="checkout-dialog panel" tabindex="-1">
+            <h2 class="section-title" id="checkout-title">Подтвердить заказ</h2>
+            <p class="section-text">
+                После подтверждения корзина будет очищена, а заказ сохранится в системе.
             </p>
-
             <div class="checkout-actions">
-                <button class="btn btn-secondary" data-close-checkout type="button">
-                    Отмена
-                </button>
-                <button class="btn btn-primary" data-confirm-checkout type="button">
-                    Подтвердить
-                </button>
+                <button class="btn btn-secondary" data-close-checkout type="button">Отмена</button>
+                <button class="btn btn-primary" data-confirm-checkout type="button">Подтвердить</button>
             </div>
         </div>
     </div>
+    <div class="sr-only" id="app-live-region" aria-live="polite" aria-atomic="true"></div>
 </body>
 </html>

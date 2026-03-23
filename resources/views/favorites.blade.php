@@ -8,73 +8,23 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="page-shell page-shell--column" data-page="favorites" data-home-url="{{ route('catalog') }}">
-    <header class="site-header">
-        <div class="site-header__inner container container-wide">
-            <a href="{{ route('home') }}" class="site-logo">📚 Книжный Мир</a>
-
-            <nav class="site-nav">
-                <ul>
-                    <li><a href="{{ route('home') }}">Главная</a></li>
-                    <li><a href="{{ route('catalog') }}">Каталог</a></li>
-                    <li><a href="{{ route('favorites') }}">Избранное</a></li>
-                </ul>
-            </nav>
-
-            <div class="site-actions">
-                <a href="{{ route('favorites') }}" class="favorites-link" title="Избранное">
-                    <span class="bookmark-icon" aria-hidden="true"></span>
-                    <span class="cart-count" data-favorites-count>0</span>
-                </a>
-
-                <a href="{{ route('cart.index') }}" class="cart-link" title="Корзина">
-                    🛒
-                    <span class="cart-count" data-cart-count>
-                        {{ array_sum(array_column(session('cart', []), 'quantity')) }}
-                    </span>
-                </a>
-
-                @guest
-                    <a href="{{ route('User_login') }}" class="btn btn-secondary">Log in</a>
-                    <a href="{{ route('register') }}" class="btn btn-primary">Register</a>
-                @endguest
-
-                @auth
-                    <a href="{{ route('dashboard') }}" class="profile-link">👤</a>
-                @endauth
-            </div>
-        </div>
-    </header>
+    @include('partials.site-header')
 
     <main class="site-main">
-        <section class="container container-wide">
-            <h1 class="page-heading">Избранные книги</h1>
-
-            <div class="favorites-page page-panel">
+        <section class="container">
+            <section class="panel stack-md">
+                <div class="section-head">
+                    <div>
+                        <h1 class="section-title">Избранные книги</h1>
+                        <p class="section-text">Список хранится локально в браузере.</p>
+                    </div>
+                </div>
                 <div id="favorites-content"></div>
-            </div>
+            </section>
         </section>
     </main>
 
-    <footer class="site-footer">
-        <div class="footer-links">
-            <a href="#">Правовая информация</a>
-            <a href="#">Контакты</a>
-            <a href="#">Реклама</a>
-            <a href="#">Политика конфиденциальности</a>
-            <a href="#">Условия использования</a>
-            <a href="#">Пресс-релизы</a>
-        </div>
-
-        <div class="footer-info">
-            На информационном ресурсе применяются рекомендательные технологии
-            в соответствии с правилами сервиса.
-        </div>
-
-        <div class="footer-bottom">
-            <div>© Книжный Мир 2024</div>
-
-            <div class="app-link">📱 Приложение для Android</div>
-        </div>
-    </footer>
+    <div class="sr-only" id="app-live-region" aria-live="polite" aria-atomic="true"></div>
+    @include('partials.site-footer')
 </body>
 </html>

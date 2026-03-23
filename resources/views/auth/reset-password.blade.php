@@ -7,17 +7,13 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="page-shell auth-page" data-home-url="{{ route('home') }}">
-    <header class="site-header">
-        <div class="site-header__inner container">
-            <a href="{{ route('home') }}" class="site-logo">📚 Книжный Мир</a>
-        </div>
-    </header>
+    @include('partials.site-header', ['showNav' => false, 'showFavorites' => false, 'showCart' => false, 'showAuthButtons' => false, 'showProfile' => false])
 
     <main class="site-main">
-        <div class="auth-card page-panel">
+        <section class="auth-card panel stack-md">
             <div>
-                <h1 class="auth-title">Новый пароль</h1>
-                <p class="auth-subtitle">Введите email и задайте новый пароль для аккаунта</p>
+                <h1 class="section-title">Новый пароль</h1>
+                <p class="section-text">Введите email и задайте новый пароль.</p>
             </div>
 
             <form method="POST" action="{{ route('password.update') }}" autocomplete="off" novalidate>
@@ -26,15 +22,7 @@
 
                 <div class="form-group {{ $errors->has('email') ? 'error' : '' }}">
                     <label for="email">Email</label>
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value="{{ old('email', $email) }}"
-                        placeholder="Введите ваш email"
-                        required
-                        autofocus
-                    >
+                    <input type="email" id="email" name="email" value="{{ old('email', $email) }}" required autofocus>
                     @error('email')
                         <span class="error-message">{{ $message }}</span>
                     @enderror
@@ -42,13 +30,7 @@
 
                 <div class="form-group {{ $errors->has('password') ? 'error' : '' }}">
                     <label for="password">Новый пароль</label>
-                    <input
-                        type="password"
-                        id="password"
-                        name="password"
-                        placeholder="Введите новый пароль"
-                        required
-                    >
+                    <input type="password" id="password" name="password" required>
                     @error('password')
                         <span class="error-message">{{ $message }}</span>
                     @enderror
@@ -56,18 +38,12 @@
 
                 <div class="form-group">
                     <label for="password_confirmation">Подтверждение пароля</label>
-                    <input
-                        type="password"
-                        id="password_confirmation"
-                        name="password_confirmation"
-                        placeholder="Повторите новый пароль"
-                        required
-                    >
+                    <input type="password" id="password_confirmation" name="password_confirmation" required>
                 </div>
 
                 <button type="submit" class="btn btn-primary btn-block">Сохранить пароль</button>
             </form>
-        </div>
+        </section>
     </main>
 </body>
 </html>

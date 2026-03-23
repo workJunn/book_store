@@ -16,6 +16,7 @@ class Book extends Model
         'book_name',
         'price',
         'stock_quantity',
+        'is_preorder',
         'publication_date',
         'number_of_pages',
         'average_rating',
@@ -28,6 +29,7 @@ class Book extends Model
         'price' => 'decimal:2',
         'average_rating' => 'decimal:2',
         'publication_date' => 'date',
+        'is_preorder' => 'boolean',
     ];
 
     public function author()

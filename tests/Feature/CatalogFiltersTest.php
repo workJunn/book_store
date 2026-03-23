@@ -4,6 +4,7 @@ use App\Models\Author;
 use App\Models\Book;
 use App\Models\Genre;
 use App\Models\Publisher;
+use Illuminate\Support\Carbon;
 
 it('filters catalog by genre', function () {
     $author = Author::create([
@@ -94,4 +95,62 @@ it('filters catalog by search and stock', function () {
     $response->assertOk();
     $response->assertSee('Мир глазами читателя');
     $response->assertDontSee('Война и мир');
+});
+
+it('shows quick rankings on the welcome page and links them to catalog periods', function () {
+    Carbon::setTestNow('2026-03-23 12:00:00');
+
+    $author = Author::create([
+        'author_name' => 'Джордж Оруэлл',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Penguin Books',
+    ]);
+
+    Book::create([
+        'book_name' => '1984',
+        'price' => 700.00,
+        'stock_quantity' => 5,
+        'publication_date' => '2026-03-20',
+        'number_of_pages' => 328,
+        'average_rating' => 4.9,
+        'description' => 'Антиутопия.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    Book::create([
+        'book_name' => 'Скотный двор',
+        'price' => 550.00,
+        'stock_quantity' => 3,
+        'publication_date' => '2025-05-10',
+        'number_of_pages' => 180,
+        'average_rating' => 4.8,
+        'description' => 'Политическая сатира.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $response = $this->get('/');
+
+    $response->assertOk();
+    $response->assertSee('Топ года');
+    $response->assertSee('Топ месяца');
+    $response->assertSee('Топ недели');
+    $response->assertSee('Новинки');
+    $response->assertSee('Рейтинг');
+    $response->assertSee('Топ 10 книг');
+    $response->assertSee('1984');
+    $response->assertSee('Скотный двор');
+
+    Carbon::setTestNow();
+});
+
+it('shows a readable period title in catalog for quick ranking pages', function () {
+    $response = $this->get('/catalog?period=users');
+
+    $response->assertOk();
+    $response->assertSee('Рейтинг');
+    $response->assertSee('Рейтинг книг на основе оценок пользователей.');
 });

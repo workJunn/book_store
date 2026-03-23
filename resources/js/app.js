@@ -2,6 +2,21 @@ import './bootstrap';
 
 const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 const favoritesStorageKey = 'book_store_favorites';
+let lastFocusedElement = null;
+
+function announceToLiveRegion(text) {
+    const liveRegion = document.getElementById('app-live-region');
+
+    if (!liveRegion) {
+        return;
+    }
+
+    liveRegion.textContent = '';
+
+    window.setTimeout(() => {
+        liveRegion.textContent = text;
+    }, 10);
+}
 
 function getHomeUrl() {
     return document.body.dataset.homeUrl || '/';
@@ -148,7 +163,25 @@ function toggleFavorite(button) {
 }
 
 function showFlashMessage(text, type = 'success') {
-    return undefined;
+    const existing = document.querySelector('.flash-message');
+
+    if (existing) {
+        existing.remove();
+    }
+
+    const message = document.createElement('div');
+    message.className = `flash-message flash-message--${type}`;
+    message.textContent = text;
+    message.setAttribute('role', type === 'error' ? 'alert' : 'status');
+    message.setAttribute('aria-live', type === 'error' ? 'assertive' : 'polite');
+    document.body.appendChild(message);
+    announceToLiveRegion(text);
+
+    window.setTimeout(() => {
+        message.remove();
+    }, 2500);
+
+    return message;
 }
 
 async function postJson(url) {
@@ -197,11 +230,31 @@ function renderEmptyCart(message = 'Добавьте книги из катал�
 }
 
 function openCheckoutModal() {
-    document.getElementById('checkout-modal')?.classList.add('is-open');
+    const modal = document.getElementById('checkout-modal');
+
+    if (!modal) {
+        return;
+    }
+
+    lastFocusedElement = document.activeElement;
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    modal.querySelector('.checkout-dialog')?.focus();
 }
 
 function closeCheckoutModal() {
-    document.getElementById('checkout-modal')?.classList.remove('is-open');
+    const modal = document.getElementById('checkout-modal');
+
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+
+    if (lastFocusedElement instanceof HTMLElement) {
+        lastFocusedElement.focus();
+    }
 }
 
 async function updateCartItem(id, action) {
@@ -388,6 +441,7 @@ function initReviewsHub() {
             const isActive = trigger.dataset.reviewsTabTrigger === tabName;
             trigger.classList.toggle('is-active', isActive);
             trigger.setAttribute('aria-selected', isActive ? 'true' : 'false');
+            trigger.setAttribute('tabindex', isActive ? '0' : '-1');
         });
 
         panels.forEach((panel) => {
@@ -400,6 +454,31 @@ function initReviewsHub() {
     triggers.forEach((trigger) => {
         trigger.addEventListener('click', () => {
             activateTab(trigger.dataset.reviewsTabTrigger);
+        });
+
+        trigger.addEventListener('keydown', (event) => {
+            if (!['ArrowLeft', 'ArrowRight', 'Home', 'End'].includes(event.key)) {
+                return;
+            }
+
+            event.preventDefault();
+
+            const currentIndex = triggers.indexOf(trigger);
+            let nextIndex = currentIndex;
+
+            if (event.key === 'ArrowRight') {
+                nextIndex = (currentIndex + 1) % triggers.length;
+            } else if (event.key === 'ArrowLeft') {
+                nextIndex = (currentIndex - 1 + triggers.length) % triggers.length;
+            } else if (event.key === 'Home') {
+                nextIndex = 0;
+            } else if (event.key === 'End') {
+                nextIndex = triggers.length - 1;
+            }
+
+            const nextTrigger = triggers[nextIndex];
+            activateTab(nextTrigger.dataset.reviewsTabTrigger);
+            nextTrigger.focus();
         });
     });
 
@@ -465,5 +544,41 @@ document.addEventListener('click', (event) => {
     const modal = document.getElementById('checkout-modal');
     if (modal && event.target === modal) {
         closeCheckoutModal();
+    }
+});
+
+document.addEventListener('keydown', (event) => {
+    const modal = document.getElementById('checkout-modal');
+
+    if (!modal || !modal.classList.contains('is-open')) {
+        return;
+    }
+
+    if (event.key === 'Escape') {
+        closeCheckoutModal();
+        return;
+    }
+
+    if (event.key !== 'Tab') {
+        return;
+    }
+
+    const focusableElements = Array.from(
+        modal.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')
+    ).filter((element) => !element.hasAttribute('disabled'));
+
+    if (!focusableElements.length) {
+        return;
+    }
+
+    const firstElement = focusableElements[0];
+    const lastElement = focusableElements[focusableElements.length - 1];
+
+    if (event.shiftKey && document.activeElement === firstElement) {
+        event.preventDefault();
+        lastElement.focus();
+    } else if (!event.shiftKey && document.activeElement === lastElement) {
+        event.preventDefault();
+        firstElement.focus();
     }
 });

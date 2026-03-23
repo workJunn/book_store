@@ -6,10 +6,11 @@ use App\Models\Book;
 use App\Models\Genre;
 use App\Models\Review;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
-use Illuminate\Support\Collection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class BookController extends Controller
 {
@@ -24,6 +25,7 @@ class BookController extends Controller
         return view('welcome', [
             'featuredBooks' => $books->take(4)->values(),
             'shelves' => $this->buildShelves($books),
+            'quickRankings' => $this->buildQuickRankings($books),
         ]);
     }
 
@@ -31,6 +33,31 @@ class BookController extends Controller
     {
         $query = Book::query()->with(['author', 'publisher', 'genres']);
         $search = trim((string) $request->string('search'));
+
+        $periodFilter = $request->string('period')->toString();
+
+        if ($periodFilter !== '') {
+            match ($periodFilter) {
+                'year' => $query->whereBetween('publication_date', [
+                    now()->subYear()->startOfYear()->format('Y-m-d'),
+                    now()->subYear()->endOfYear()->format('Y-m-d'),
+                ]),
+                'month' => $query->whereBetween('publication_date', [
+                    now()->startOfMonth()->format('Y-m-d'),
+                    now()->endOfMonth()->format('Y-m-d'),
+                ]),
+                'week' => $query->whereBetween('publication_date', [
+                    now()->subDays(7)->format('Y-m-d'),
+                    now()->format('Y-m-d'),
+                ]),
+                'new' => $query->whereBetween('publication_date', [
+                    now()->startOfYear()->format('Y-m-d'),
+                    now()->endOfYear()->format('Y-m-d'),
+                ]),
+                'preorder' => $this->applyPreorderFilter($query),
+                default => null,
+            };
+        }
 
         if ($request->filled('genre')) {
             $genreId = (int) $request->input('genre');
@@ -46,7 +73,7 @@ class BookController extends Controller
 
         if ($search !== '') {
             $operator = DB::getDriverName() === 'pgsql' ? 'ilike' : 'like';
-            $query->where('book_name', $operator, '%' . $search . '%');
+            $query->where('book_name', $operator, '%'.$search.'%');
         }
 
         $sort = $request->string('sort')->toString();
@@ -65,11 +92,13 @@ class BookController extends Controller
         return view('catalog', [
             'books' => $books,
             'genres' => $genres,
+            'periodMeta' => $this->getPeriodMeta($periodFilter),
             'filters' => [
                 'search' => $search,
                 'genre' => $request->input('genre'),
                 'sort' => $sort,
                 'in_stock' => $request->boolean('in_stock'),
+                'period' => $periodFilter,
             ],
         ]);
     }
@@ -197,7 +226,6 @@ class BookController extends Controller
         if ($selected->isNotEmpty()) {
             return $selected;
         }
-        
 
         return $sorter($books);
     }
@@ -216,6 +244,139 @@ class BookController extends Controller
         }
 
         return false;
+    }
+
+    private function buildQuickRankings(Collection $books): Collection
+    {
+        return collect([
+            [
+                'period' => 'year',
+                'title' => 'Топ года',
+                'description' => 'Топ 10 книг',
+                'books' => $this->topBooksForPeriod($books, 'year'),
+            ],
+            [
+                'period' => 'month',
+                'title' => 'Топ месяца',
+                'description' => 'Топ 10 книг',
+                'books' => $this->topBooksForPeriod($books, 'month'),
+            ],
+            [
+                'period' => 'week',
+                'title' => 'Топ недели',
+                'description' => 'Топ 10 книг',
+                'books' => $this->topBooksForPeriod($books, 'week'),
+            ],
+            [
+                'period' => 'new',
+                'title' => 'Новинки',
+                'description' => 'Топ 10 книг',
+                'books' => $this->topBooksForPeriod($books, 'new'),
+            ],
+            [
+                'period' => 'users',
+                'title' => 'Рейтинг',
+                'description' => 'Топ 10 книг',
+                'books' => $this->topBooksForPeriod($books, 'users'),
+            ],
+        ])->map(function (array $ranking) use ($books) {
+            if ($ranking['books']->isEmpty()) {
+                $ranking['books'] = $books
+                    ->sortByDesc(fn (Book $book) => (float) $book->average_rating)
+                    ->take(10)
+                    ->values();
+            }
+
+            return $ranking;
+        });
+    }
+
+    private function topBooksForPeriod(Collection $books, string $period): Collection
+    {
+        $filtered = match ($period) {
+            'year' => $books->filter(fn (Book $book) => optional($book->publication_date)?->between(
+                now()->subYear()->startOfYear(),
+                now()->subYear()->endOfYear()
+            )),
+            'month' => $books->filter(fn (Book $book) => optional($book->publication_date)?->between(
+                now()->startOfMonth(),
+                now()->endOfMonth()
+            )),
+            'week' => $books->filter(fn (Book $book) => optional($book->publication_date)?->between(
+                now()->subDays(7)->startOfDay(),
+                now()->endOfDay()
+            )),
+            'new' => $books->filter(fn (Book $book) => optional($book->publication_date)?->between(
+                now()->startOfYear(),
+                now()->endOfYear()
+            )),
+            'preorder' => $this->hasPreorderColumn()
+                ? $books->filter(fn (Book $book) => (bool) $book->is_preorder)
+                : collect(),
+            'users' => $books,
+            default => collect(),
+        };
+
+        return $filtered
+            ->sortByDesc(fn (Book $book) => [(float) $book->average_rating, optional($book->publication_date)->timestamp ?? 0])
+            ->take(10)
+            ->values();
+    }
+
+    private function getPeriodMeta(string $periodFilter): array
+    {
+        return match ($periodFilter) {
+            'year' => [
+                'title' => 'Лучшие книги за год',
+                'description' => 'Подборка книг за прошлый календарный год.',
+            ],
+            'month' => [
+                'title' => 'Лучшие книги за месяц',
+                'description' => 'Подборка книг текущего месяца.',
+            ],
+            'week' => [
+                'title' => 'Лучшие книги за неделю',
+                'description' => 'Подборка книг за последние 7 дней.',
+            ],
+            'new' => [
+                'title' => 'Новинки сайта',
+                'description' => 'Все новинки текущего года.',
+            ],
+            'preorder' => [
+                'title' => 'Предзаказы книг',
+                'description' => 'Книги, которые доступны для предзаказа.',
+            ],
+            'users' => [
+                'title' => 'Рейтинг',
+                'description' => 'Рейтинг книг на основе оценок пользователей.',
+            ],
+            default => [
+                'title' => 'Каталог книг',
+                'description' => 'Все книги магазина с фильтрами и сортировкой.',
+            ],
+        };
+    }
+
+    private function applyPreorderFilter($query): void
+    {
+        if (! $this->hasPreorderColumn()) {
+            $query->whereRaw('1 = 0');
+
+            return;
+        }
+
+        $query->where('is_preorder', true);
+    }
+
+    private function hasPreorderColumn(): bool
+    {
+        static $hasPreorderColumn;
+
+        if ($hasPreorderColumn !== null) {
+            return $hasPreorderColumn;
+        }
+
+        return $hasPreorderColumn = Schema::hasColumn('books', 'is_preorder');
     }
 
     private function sortReviews(EloquentCollection $reviews, string $reviewSort): EloquentCollection

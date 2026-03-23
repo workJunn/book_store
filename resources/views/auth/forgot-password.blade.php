@@ -7,23 +7,17 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="page-shell auth-page" data-home-url="{{ route('home') }}">
-    <header class="site-header">
-        <div class="site-header__inner container">
-            <a href="{{ route('home') }}" class="site-logo">📚 Книжный Мир</a>
-        </div>
-    </header>
+    @include('partials.site-header', ['showNav' => false, 'showFavorites' => false, 'showCart' => false, 'showAuthButtons' => false, 'showProfile' => false])
 
     <main class="site-main">
-        <div class="auth-card page-panel">
+        <section class="auth-card panel stack-md">
             <div>
-                <h1 class="auth-title">Сброс пароля</h1>
-                <p class="auth-subtitle">Введите email, и мы отправим инструкцию по восстановлению доступа</p>
+                <h1 class="section-title">Сброс пароля</h1>
+                <p class="section-text">Введите email для восстановления доступа.</p>
             </div>
 
             @if (session('status'))
-                <div class="success-message">
-                    {{ session('status') }}
-                </div>
+                <div class="success-message">{{ session('status') }}</div>
             @endif
 
             <form method="post" action="{{ route('password.email') }}" autocomplete="off" novalidate>
@@ -31,14 +25,7 @@
 
                 <div class="form-group {{ $errors->has('email') ? 'error' : '' }}">
                     <label for="email">Email</label>
-                    <input
-                        type="email"
-                        id="email"
-                        name="email"
-                        value="{{ old('email') }}"
-                        placeholder="Введите ваш email"
-                        autofocus
-                    >
+                    <input type="email" id="email" name="email" value="{{ old('email') }}" autofocus>
                     @error('email')
                         <span class="error-message">{{ $message }}</span>
                     @enderror
@@ -46,7 +33,7 @@
 
                 <button type="submit" class="btn btn-primary btn-block">Отправить ссылку</button>
             </form>
-        </div>
+        </section>
     </main>
 </body>
 </html>
