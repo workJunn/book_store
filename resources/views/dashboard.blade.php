@@ -32,32 +32,52 @@
                     <div class="success-box">{{ session('status') }}</div>
                 @endif
 
-                <div class="profile-info">
-                    <div class="info-box">
-                        <div class="info-label">Имя</div>
-                        <div class="info-value">{{ $user->name }}</div>
+                <section class="profile-section stack-md">
+                    <div>
+                        <h2 class="subheading">Личные данные</h2>
+                        <p class="section-text">Все основные сведения о вашем аккаунте собраны в одной аккуратной сетке.</p>
                     </div>
-                    <div class="info-box">
-                        <div class="info-label">Email</div>
-                        <div class="info-value">{{ $user->email }}</div>
+
+                    <div class="profile-info-grid">
+                        <article class="info-box profile-card">
+                            <div class="info-label">Имя</div>
+                            <div class="info-value">{{ $user->name }}</div>
+                        </article>
+                        <article class="info-box profile-card">
+                            <div class="info-label">Email</div>
+                            <div class="info-value">{{ $user->email }}</div>
+                        </article>
+                        <article class="info-box profile-card">
+                            <div class="info-label">Телефон</div>
+                            <div class="info-value">{{ $user->phone_number ?: 'Не указан' }}</div>
+                        </article>
+                        <article class="info-box profile-card">
+                            <div class="balance-row">
+                                <div class="balance-row__details">
+                                    <div class="info-label">Баланс</div>
+                                    <div class="info-value balance-row__value">{{ number_format((float) $user->balance, 2, '.', ' ') }} ₽</div>
+                                </div>
+                                <button
+                                    type="button"
+                                    class="btn btn-secondary balance-row__button"
+                                    data-open-topup
+                                    aria-haspopup="dialog"
+                                    aria-controls="topup-modal"
+                                >
+                                    Пополнить
+                                </button>
+                            </div>
+                        </article>
+                        <article class="info-box profile-card">
+                            <div class="info-label">Дата регистрации</div>
+                            <div class="info-value">{{ $user->registration_date ? $user->registration_date->format('d.m.Y H:i') : 'Не указана' }}</div>
+                        </article>
+                        <article class="info-box profile-card">
+                            <div class="info-label">Последнее обновление</div>
+                            <div class="info-value">{{ $user->updated_at ? $user->updated_at->format('d.m.Y H:i') : 'Не обновлялся' }}</div>
+                        </article>
                     </div>
-                    <div class="info-box">
-                        <div class="info-label">Телефон</div>
-                        <div class="info-value">{{ $user->phone_number ?: 'Не указан' }}</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Баланс</div>
-                        <div class="info-value">{{ number_format((float) $user->balance, 2, '.', ' ') }} ₽</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Дата регистрации</div>
-                        <div class="info-value">{{ $user->registration_date ? $user->registration_date->format('d.m.Y H:i') : 'Не указана' }}</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Последнее обновление</div>
-                        <div class="info-value">{{ $user->updated_at ? $user->updated_at->format('d.m.Y H:i') : 'Не обновлялся' }}</div>
-                    </div>
-                </div>
+                </section>
 
                 <section class="stack-md">
                     <div>
@@ -91,5 +111,68 @@
             </section>
         </section>
     </main>
+
+    <div
+        class="checkout-modal {{ $errors->has('amount') || $errors->has('payment_method') ? 'is-open' : '' }}"
+        id="topup-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="topup-title"
+        aria-hidden="{{ $errors->has('amount') || $errors->has('payment_method') ? 'false' : 'true' }}"
+    >
+        <div class="checkout-dialog info-box stack-md topup-dialog" tabindex="-1">
+            <div class="stack-sm">
+                <h2 class="subheading" id="topup-title">Пополнение баланса</h2>
+                <p class="section-text">Укажите сумму и выберите удобный способ оплаты.</p>
+            </div>
+
+            <form method="POST" action="{{ route('balance.topup') }}" class="stack-md">
+                @csrf
+
+                <div class="form-group">
+                    <label for="topup-amount">Сумма пополнения</label>
+                    <input
+                        id="topup-amount"
+                        type="text"
+                        name="amount"
+                        inputmode="numeric"
+                        pattern="[0-9]+([.,][0-9]{1,2})?"
+                        placeholder="Например, 1500"
+                        value="{{ old('amount') }}"
+                        required
+                    >
+                    @error('amount')
+                        <div class="error-message">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="form-group">
+                    <span class="payment-methods__label">Способ оплаты</span>
+                    <div class="payment-methods" role="radiogroup" aria-label="Способ оплаты">
+                        <label class="payment-method-option">
+                            <input type="radio" name="payment_method" value="card" @checked(old('payment_method') === 'card') required>
+                            <span>Картой</span>
+                        </label>
+                        <label class="payment-method-option">
+                            <input type="radio" name="payment_method" value="sbp" @checked(old('payment_method') === 'sbp') required>
+                            <span>СБП</span>
+                        </label>
+                        <label class="payment-method-option">
+                            <input type="radio" name="payment_method" value="qr" @checked(old('payment_method') === 'qr') required>
+                            <span>QR-кодом</span>
+                        </label>
+                    </div>
+                    @error('payment_method')
+                        <div class="error-message">{{ $message }}</div>
+                    @enderror
+                </div>
+
+                <div class="actions">
+                    <button type="button" class="btn btn-secondary" data-close-topup>Отмена</button>
+                    <button type="submit" class="btn btn-primary">Оплатить</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </body>
 </html>

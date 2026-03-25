@@ -47,6 +47,9 @@ Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.c
 Route::get('/dashboard', [ProfileController::class, 'index'])
     ->middleware('auth')
     ->name('dashboard');
+Route::post('/balance/top-up', [ProfileController::class, 'topUp'])
+    ->middleware('auth')
+    ->name('balance.topup');
 Route::get('/admin', [AdminController::class, 'index'])
     ->middleware(['auth', 'admin'])
     ->name('admin.index');

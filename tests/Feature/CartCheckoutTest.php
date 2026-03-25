@@ -63,6 +63,7 @@ it('requires authentication to checkout', function () {
 it('creates an order from the cart and decrements stock', function () {
     $user = User::factory()->create([
         'password' => Hash::make('secret123'),
+        'balance' => 1500.00,
     ]);
 
     $book = createBookForCart([
@@ -103,7 +104,38 @@ it('creates an order from the cart and decrements stock', function () {
     ]);
 
     expect($book->fresh()->stock_quantity)->toBe(2);
+    expect((float) $user->fresh()->balance)->toBe(300.0);
     expect(session('cart', []))->toBe([]);
+});
+
+it('does not create an order when user balance is insufficient', function () {
+    $user = User::factory()->create([
+        'balance' => 300.00,
+    ]);
+
+    $book = createBookForCart([
+        'price' => 600.00,
+        'stock_quantity' => 2,
+    ]);
+
+    $item = $book->toCartItem();
+    $item['quantity'] = 1;
+
+    $response = $this->actingAs($user)->withSession([
+        'cart' => [
+            $book->getKey() => $item,
+        ],
+    ])->postJson('/cart/checkout');
+
+    $response->assertStatus(422)
+        ->assertJson([
+            'error' => true,
+            'message' => 'Недостаточно средств на балансе для оформления заказа.',
+        ]);
+
+    $this->assertDatabaseCount('orders', 0);
+    expect((float) $user->fresh()->balance)->toBe(300.0);
+    expect($book->fresh()->stock_quantity)->toBe(2);
 });
 
 it('redirects browser checkout to the payment page with order data', function () {
@@ -111,6 +143,7 @@ it('redirects browser checkout to the payment page with order data', function ()
         'name' => 'Иван Петров',
         'email' => 'ivan@example.com',
         'phone_number' => '+79991234567',
+        'balance' => 2000.00,
     ]);
 
     $book = createBookForCart([
@@ -140,12 +173,15 @@ it('redirects browser checkout to the payment page with order data', function ()
         ->assertSee('Оформлен')
         ->assertSee('Палата №6')
         ->assertSee('Количество: 2');
+
+    expect((float) $user->fresh()->balance)->toBe(1000.0);
 });
 
 it('marks order as paid and shows it in the user profile', function () {
     $user = User::factory()->create([
         'name' => 'Мария Соколова',
         'email' => 'maria@example.com',
+        'balance' => 1000.00,
     ]);
 
     $book = createBookForCart([
@@ -173,6 +209,8 @@ it('marks order as paid and shows it in the user profile', function () {
         'id_orders' => $order->getKey(),
         'status' => 'Оплачен',
     ]);
+
+    expect((float) $user->fresh()->balance)->toBe(300.0);
 
     $this->actingAs($user)->get(route('dashboard'))
         ->assertOk()

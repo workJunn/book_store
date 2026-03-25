@@ -47,7 +47,7 @@
             @guest
                 @if(($showAuthButtons ?? true) === true)
                     <a href="{{ route('login') }}" class="btn btn-secondary">Войти</a>
-                    <a href="{{ route('register') }}" class="btn btn-primary">Регистрация</a>
+                    <a href="{{ route('register') }}" class="btn btn-secondary">Регистрация</a>
                 @endif
             @endguest
 

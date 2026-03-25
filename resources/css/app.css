@@ -154,7 +154,7 @@ img {
 
 .site-logo {
     text-decoration: none;
-    font-size: 1.25rem;
+    font-size: 1.75rem;
     font-weight: 800;
 }
 
@@ -424,10 +424,12 @@ img {
     grid-template-columns: repeat(2, minmax(150px, 180px));
     justify-content: end;
     align-content: start;
+    grid-auto-rows: 1fr;
 }
 
 .simple-grid--5 {
     grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-auto-rows: 1fr;
 }
 
 .catalog-grid,
@@ -437,11 +439,12 @@ img {
 }
 
 .catalog-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
 }
 
 .favorites-grid {
-    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(180px, 180px));
+    justify-content: start;
 }
 
 .catalog-layout {
@@ -500,7 +503,11 @@ img {
 }
 
 .hero-simple .card {
+    width: 100%;
     max-width: 180px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
 }
 
 .store-card,
@@ -509,6 +516,12 @@ img {
     flex-direction: column;
     height: 100%;
     min-height: 100%;
+}
+
+.favorite-card {
+    position: relative;
+    width: 100%;
+    max-width: 180px;
 }
 
 .card__image-link,
@@ -528,6 +541,13 @@ img {
 .card__body,
 .favorite-card__body {
     padding: 14px;
+}
+
+.hero-simple .card__body {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 8px;
 }
 
 .store-card .card__body {
@@ -720,7 +740,11 @@ img {
 .book-shelf--promo .store-card,
 .book-shelf .store-card {
     width: 100%;
-    max-width: none;
+}
+
+.catalog-grid .store-card {
+    max-width: 216px;
+    justify-self: center;
 }
 
 .link-card {
@@ -728,6 +752,7 @@ img {
     text-decoration: none;
     display: grid;
     gap: 8px;
+    height: 100%;
 }
 
 .link-card--ranking {
@@ -837,7 +862,7 @@ img {
     display: grid;
     grid-template-columns: repeat(var(--shelf-columns), minmax(0, 1fr));
     gap: 10px;
-    align-items: start;
+    align-items: stretch;
 }
 
 .book-shelf__track.is-animating {
@@ -845,7 +870,9 @@ img {
 }
 
 .book-shelf .store-card {
-    justify-self: center;
+    width: 100%;
+    height: 100%;
+    justify-self: stretch;
 }
 
 @keyframes shelf-slide {
@@ -907,6 +934,71 @@ img {
     outline: none;
     min-height: 140px;
     resize: vertical;
+}
+
+input[type='number']::-webkit-outer-spin-button,
+input[type='number']::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+}
+
+input[type='number'] {
+    -moz-appearance: textfield;
+}
+
+.password-field {
+    position: relative;
+}
+
+.payment-methods__label {
+    font-weight: 600;
+}
+
+.payment-methods {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 10px;
+}
+
+.payment-method-option {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    width: fit-content;
+    cursor: pointer;
+    line-height: 1.4;
+    white-space: nowrap;
+}
+
+.password-field input {
+    padding-right: 58px;
+}
+
+.password-toggle {
+    position: absolute;
+    top: 50%;
+    right: 10px;
+    transform: translateY(-50%);
+    width: 32px;
+    height: 32px;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    border-radius: 8px;
+    color: #111827;
+}
+
+.password-toggle__icon {
+    width: 20px;
+    height: 20px;
+    display: block;
+    margin: 0 auto;
+}
+
+.password-toggle:focus-visible {
+    outline: 2px solid #93c5fd;
+    outline-offset: 2px;
 }
 
 .review-form textarea {
@@ -984,7 +1076,8 @@ img {
 }
 
 .details-grid,
-.profile-info {
+.profile-info,
+.profile-info-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 12px;
@@ -995,6 +1088,22 @@ img {
     border: 1px solid var(--line);
     border-radius: 12px;
     background: #fff;
+}
+
+.profile-section {
+    gap: 14px;
+}
+
+.profile-info-grid {
+    align-items: stretch;
+}
+
+.profile-card {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    height: 100%;
+    box-shadow: 0 10px 24px rgba(15, 23, 42, 0.06);
 }
 
 .info-box--plain {
@@ -1047,6 +1156,35 @@ img {
 .info-value {
     font-weight: 600;
     word-break: break-word;
+    line-height: 1.5;
+}
+
+.balance-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-top: auto;
+    text-align: left;
+}
+
+.balance-row__details {
+    display: grid;
+    gap: 6px;
+    min-width: 0;
+}
+
+.balance-row__value {
+    width: 100%;
+}
+
+.balance-row__button {
+    align-self: center;
+    flex: 0 0 auto;
+}
+
+.topup-dialog {
+    width: min(100%, 480px);
 }
 
 .order-line {
@@ -1385,7 +1523,7 @@ img {
     }
 
     .catalog-grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
     }
 
     .simple-grid--5 {
@@ -1419,6 +1557,7 @@ img {
     .book-layout,
     .details-grid,
     .profile-info,
+    .profile-info-grid,
     .simple-grid--2,
     .simple-grid--5 {
         grid-template-columns: 1fr;
@@ -1434,7 +1573,11 @@ img {
     }
 
     .catalog-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
+        grid-template-columns: repeat(2, minmax(140px, 1fr));
+    }
+
+    .favorites-grid {
+        grid-template-columns: repeat(2, minmax(140px, 160px));
     }
 
     .cart-item {

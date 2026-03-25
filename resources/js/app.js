@@ -4,6 +4,29 @@ const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('c
 const favoritesStorageKey = 'book_store_favorites';
 let lastFocusedElement = null;
 
+function normalizeFavoriteEntry(entry) {
+    if (!entry || typeof entry !== 'object') {
+        return null;
+    }
+
+    const id = String(entry.id ?? '').trim();
+    const url = String(entry.url ?? '').trim();
+
+    if (!id || !url) {
+        return null;
+    }
+
+    return {
+        id,
+        title: String(entry.title ?? '').trim(),
+        author: String(entry.author ?? '').trim(),
+        price: String(entry.price ?? '0').trim() || '0',
+        rating: String(entry.rating ?? '0').trim() || '0',
+        image: String(entry.image ?? '').trim(),
+        url,
+    };
+}
+
 function announceToLiveRegion(text) {
     const liveRegion = document.getElementById('app-live-region');
 
@@ -31,15 +54,40 @@ function updateCartCount(count) {
 function readFavorites() {
     try {
         const storedFavorites = window.localStorage.getItem(favoritesStorageKey);
+        const parsedFavorites = storedFavorites ? JSON.parse(storedFavorites) : [];
 
-        return storedFavorites ? JSON.parse(storedFavorites) : [];
+        if (!Array.isArray(parsedFavorites)) {
+            writeFavorites([]);
+
+            return [];
+        }
+
+        const normalizedFavorites = parsedFavorites
+            .map((entry) => normalizeFavoriteEntry(entry))
+            .filter(Boolean);
+
+        if (normalizedFavorites.length !== parsedFavorites.length) {
+            writeFavorites(normalizedFavorites);
+        }
+
+        return normalizedFavorites;
     } catch (error) {
         return [];
     }
 }
 
 function writeFavorites(favorites) {
-    window.localStorage.setItem(favoritesStorageKey, JSON.stringify(favorites));
+    try {
+        const normalizedFavorites = favorites
+            .map((entry) => normalizeFavoriteEntry(entry))
+            .filter(Boolean);
+
+        window.localStorage.setItem(favoritesStorageKey, JSON.stringify(normalizedFavorites));
+
+        return true;
+    } catch (error) {
+        return false;
+    }
 }
 
 function updateFavoritesCount() {
@@ -149,11 +197,17 @@ function toggleFavorite(button) {
 
     if (favoriteIndex >= 0) {
         favorites.splice(favoriteIndex, 1);
-        writeFavorites(favorites);
+        if (!writeFavorites(favorites)) {
+            showFlashMessage('Не удалось обновить избранное', 'error');
+            return;
+        }
         showFlashMessage('Книга удалена из избранного');
     } else {
         favorites.unshift(favorite);
-        writeFavorites(favorites);
+        if (!writeFavorites(favorites)) {
+            showFlashMessage('Не удалось сохранить книгу в избранное', 'error');
+            return;
+        }
         showFlashMessage('Книга добавлена в избранное');
     }
 
@@ -272,6 +326,35 @@ function openDeleteUserModal() {
 
 function closeDeleteUserModal() {
     const modal = document.getElementById('delete-user-modal');
+
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+
+    if (lastFocusedElement instanceof HTMLElement) {
+        lastFocusedElement.focus();
+    }
+}
+
+function openTopUpModal() {
+    const modal = document.getElementById('topup-modal');
+
+    if (!modal) {
+        return;
+    }
+
+    lastFocusedElement = document.activeElement;
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    modal.querySelector('.checkout-dialog')?.focus();
+    modal.querySelector('input[name="amount"]')?.focus();
+}
+
+function closeTopUpModal() {
+    const modal = document.getElementById('topup-modal');
 
     if (!modal) {
         return;
@@ -563,11 +646,57 @@ function initReviewsHub() {
     });
 }
 
+function initPasswordToggles() {
+    document.querySelectorAll('[data-password-toggle]').forEach((button) => {
+        const field = button.closest('.password-field');
+        const input = field?.querySelector('[data-password-input]');
+
+        if (!input) {
+            return;
+        }
+
+        const showPassword = () => {
+            input.type = 'text';
+            button.setAttribute('aria-pressed', 'true');
+        };
+
+        const hidePassword = () => {
+            input.type = 'password';
+            button.setAttribute('aria-pressed', 'false');
+        };
+
+        button.addEventListener('pointerdown', (event) => {
+            event.preventDefault();
+            showPassword();
+        });
+
+        button.addEventListener('pointerup', hidePassword);
+        button.addEventListener('pointerleave', hidePassword);
+        button.addEventListener('pointercancel', hidePassword);
+
+        button.addEventListener('keydown', (event) => {
+            if (event.key === ' ' || event.key === 'Enter') {
+                event.preventDefault();
+                showPassword();
+            }
+        });
+
+        button.addEventListener('keyup', (event) => {
+            if (event.key === ' ' || event.key === 'Enter') {
+                hidePassword();
+            }
+        });
+
+        button.addEventListener('blur', hidePassword);
+    });
+}
+
 updateFavoritesCount();
 syncFavoriteButtons();
 renderFavoritesPage();
 initBookShelves();
 initReviewsHub();
+initPasswordToggles();
 
 document.addEventListener('click', (event) => {
     const favoriteButton = event.target.closest('[data-favorite-toggle]');
@@ -618,6 +747,16 @@ document.addEventListener('click', (event) => {
         return;
     }
 
+    if (event.target.closest('[data-open-topup]')) {
+        openTopUpModal();
+        return;
+    }
+
+    if (event.target.closest('[data-close-topup]')) {
+        closeTopUpModal();
+        return;
+    }
+
     const modal = document.getElementById('checkout-modal');
     if (modal && event.target === modal) {
         closeCheckoutModal();
@@ -627,17 +766,26 @@ document.addEventListener('click', (event) => {
     const deleteUserModal = document.getElementById('delete-user-modal');
     if (deleteUserModal && event.target === deleteUserModal) {
         closeDeleteUserModal();
+        return;
+    }
+
+    const topUpModal = document.getElementById('topup-modal');
+    if (topUpModal && event.target === topUpModal) {
+        closeTopUpModal();
     }
 });
 
 document.addEventListener('keydown', (event) => {
     const modal = document.getElementById('checkout-modal');
     const deleteUserModal = document.getElementById('delete-user-modal');
+    const topUpModal = document.getElementById('topup-modal');
 
     const activeModal = modal?.classList.contains('is-open')
         ? modal
         : deleteUserModal?.classList.contains('is-open')
             ? deleteUserModal
+            : topUpModal?.classList.contains('is-open')
+                ? topUpModal
             : null;
 
     if (!activeModal) {
@@ -647,6 +795,8 @@ document.addEventListener('keydown', (event) => {
     if (event.key === 'Escape') {
         if (activeModal === modal) {
             closeCheckoutModal();
+        } else if (activeModal === topUpModal) {
+            closeTopUpModal();
         } else {
             closeDeleteUserModal();
         }

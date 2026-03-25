@@ -102,3 +102,22 @@ it('shows the reset password form and updates the password', function () {
 
     expect(Hash::check('new-secret123', $user->fresh()->password))->toBeTrue();
 });
+
+it('tops up the user balance from the profile page', function () {
+    $user = User::factory()->create([
+        'balance' => 500.00,
+    ]);
+
+    $response = $this->actingAs($user)->post(route('balance.topup'), [
+        'amount' => 1500,
+        'payment_method' => 'sbp',
+    ]);
+
+    $response->assertRedirect(route('dashboard'));
+    $response->assertSessionHas('status', 'Баланс пополнен на 1 500.00 ₽.');
+
+    $this->assertDatabaseHas('users', [
+        'id_users' => $user->getKey(),
+        'balance' => 2000.00,
+    ]);
+});

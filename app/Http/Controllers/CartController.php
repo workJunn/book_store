@@ -192,6 +192,7 @@ class CartController extends Controller
         }
 
         $cart = session()->get('cart', []);
+        $user = Auth::user();
 
         if ($cart === []) {
             if ($request->expectsJson()) {
@@ -204,6 +205,23 @@ class CartController extends Controller
             return redirect()
                 ->route('cart.index')
                 ->with('search_error', 'Корзина пуста.');
+        }
+
+        $orderTotal = $this->calculateTotal($cart);
+
+        if ((float) $user->balance < $orderTotal) {
+            $message = 'Недостаточно средств на балансе для оформления заказа.';
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'error' => true,
+                    'message' => $message,
+                ], 422);
+            }
+
+            return redirect()
+                ->route('cart.index')
+                ->with('search_error', $message);
         }
 
         $bookIds = array_map('intval', array_keys($cart));
@@ -242,11 +260,11 @@ class CartController extends Controller
             }
         }
 
-        $order = DB::transaction(function () use ($cart, $books) {
+        $order = DB::transaction(function () use ($cart, $books, $user, $orderTotal) {
             $order = Order::create([
                 'id_users' => Auth::id(),
                 'status' => 'Оформлен',
-                'total_amount' => $this->calculateTotal($cart),
+                'total_amount' => $orderTotal,
             ]);
 
             foreach ($cart as $bookId => $item) {
@@ -260,6 +278,8 @@ class CartController extends Controller
 
                 $book->decrement('stock_quantity', $item['quantity']);
             }
+
+            $user->decrement('balance', $orderTotal);
 
             return $order;
         });
