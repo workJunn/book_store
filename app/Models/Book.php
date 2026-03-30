@@ -14,6 +14,9 @@ class Book extends Model
 
     protected $fillable = [
         'book_name',
+        'cover_image',
+        'digital_file_path',
+        'digital_file_original_name',
         'price',
         'discount_percent',
         'stock_quantity',
@@ -73,10 +76,37 @@ class Book extends Model
             'title' => $this->book_name,
             'author' => $this->author->author_name ?? 'Не указан',
             'price' => (float) $this->price,
-            'image' => 'https://via.placeholder.com/500x700/667eea/ffffff?text=' . urlencode($this->book_name),
+            'image' => $this->cover_image_url,
             'quantity' => 1,
             'stock_quantity' => $this->stock_quantity,
         ];
+    }
+
+    public function getCoverImageUrlAttribute(): string
+    {
+        if ($this->cover_image) {
+            return '/storage/' . ltrim($this->cover_image, '/');
+        }
+
+        return $this->getPlaceholderImageUrl();
+    }
+
+    public function getPlaceholderImageUrl(): string
+    {
+        return 'https://via.placeholder.com/500x700/667eea/ffffff?text=' . urlencode($this->book_name);
+    }
+
+    public function hasDigitalFile(): bool
+    {
+        return ! empty($this->digital_file_path);
+    }
+
+    public function getDigitalFileDownloadNameAttribute(): string
+    {
+        $extension = pathinfo($this->digital_file_original_name ?: $this->digital_file_path ?: '', PATHINFO_EXTENSION);
+        $safeTitle = trim((string) preg_replace('/[^\pL\pN]+/u', '_', $this->book_name), '_') ?: 'book';
+
+        return $safeTitle . ($extension ? '.' . mb_strtolower($extension) : '');
     }
 
     public function getOriginalPrice(): float

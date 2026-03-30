@@ -29,10 +29,13 @@
                 @foreach($books as $book)
                     <article class="info-box stack-sm">
                         <div class="section-head">
-                            <div class="stack-sm">
-                                <div class="info-value">{{ $book->book_name }}</div>
-                                <div class="muted">
-                                    {{ $book->author->author_name ?? 'Автор не указан' }} · {{ number_format((float) $book->price, 0, '.', ' ') }} ₽ · Остаток: {{ $book->stock_quantity }}
+                            <div class="actions">
+                                <img src="{{ $book->cover_image_url }}" alt="{{ $book->book_name }}" class="cart-image">
+                                <div class="stack-sm">
+                                    <div class="info-value">{{ $book->book_name }}</div>
+                                    <div class="muted">
+                                        {{ $book->author->author_name ?? 'Автор не указан' }} · {{ number_format((float) $book->price, 0, '.', ' ') }} ₽ · Остаток: {{ $book->stock_quantity }}
+                                    </div>
                                 </div>
                             </div>
                             <div class="actions">

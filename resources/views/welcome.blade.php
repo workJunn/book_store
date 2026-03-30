@@ -27,7 +27,7 @@
                         <article class="card">
                             <a href="{{ route('books.show', $book->getKey()) }}" class="card__image-link">
                                 <img
-                                    src="https://via.placeholder.com/500x700/667eea/ffffff?text={{ urlencode($book->book_name) }}"
+                                    src="{{ $book->cover_image_url }}"
                                     class="card__image"
                                     alt="{{ $book->book_name }}"
                                 >
@@ -79,7 +79,7 @@
                                     <article class="store-card store-card--promo">
                                         <a href="{{ route('books.show', $book->getKey()) }}" class="card__image-link">
                                             <img
-                                                src="https://via.placeholder.com/500x700/667eea/ffffff?text={{ urlencode($book->book_name) }}"
+                                                src="{{ $book->cover_image_url }}"
                                                 class="card__image"
                                                 alt="{{ $book->book_name }}"
                                             >
@@ -136,7 +136,7 @@
                                                 <article class="store-card store-card--promo">
                                                     <a href="{{ route('books.show', $book->getKey()) }}" class="card__image-link">
                                                         <img
-                                                            src="https://via.placeholder.com/500x700/667eea/ffffff?text={{ urlencode($book->book_name) }}"
+                                                            src="{{ $book->cover_image_url }}"
                                                             class="card__image"
                                                             alt="{{ $book->book_name }}"
                                                         >

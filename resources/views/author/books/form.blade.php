@@ -20,7 +20,7 @@
                     <a href="{{ route('author.index') }}" class="btn btn-secondary">Назад</a>
                 </div>
 
-                <form method="POST" action="{{ $formAction }}" class="stack-md">
+                <form method="POST" action="{{ $formAction }}" class="stack-md" enctype="multipart/form-data">
                     @csrf
                     @if($book->exists)
                         @method('PUT')
@@ -29,6 +29,46 @@
                     <div class="form-group">
                         <label for="book_name">Название книги</label>
                         <input id="book_name" name="book_name" type="text" value="{{ old('book_name', $book->book_name) }}" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cover">Обложка книги</label>
+                        <input id="cover" name="cover" type="file" accept="image/png,image/jpeg,image/webp,image/jpg">
+                        @error('cover')
+                            <div class="error-message">{{ $message }}</div>
+                        @enderror
+                        @error('remove_cover_image')
+                            <div class="error-message">{{ $message }}</div>
+                        @enderror
+                        @if($book->cover_image)
+                            <div class="stack-sm">
+                                <img src="{{ $book->cover_image_url }}" alt="{{ $book->book_name }}" class="book-image">
+                                <label class="checkbox-row">
+                                    <input type="checkbox" name="remove_cover_image" value="1" @checked(old('remove_cover_image'))>
+                                    <span>Удалить текущую обложку</span>
+                                </label>
+                            </div>
+                        @endif
+                    </div>
+
+                    <div class="form-group">
+                        <label for="book_file">Файл книги</label>
+                        <input id="book_file" name="book_file" type="file" accept=".pdf,.epub,.fb2,.txt">
+                        @error('book_file')
+                            <div class="error-message">{{ $message }}</div>
+                        @enderror
+                        @error('remove_book_file')
+                            <div class="error-message">{{ $message }}</div>
+                        @enderror
+                        @if($book->digital_file_path)
+                            <div class="stack-sm">
+                                <div class="muted">Загружен файл: {{ $book->digital_file_original_name }}</div>
+                                <label class="checkbox-row">
+                                    <input type="checkbox" name="remove_book_file" value="1" @checked(old('remove_book_file'))>
+                                    <span>Удалить текущий файл книги</span>
+                                </label>
+                            </div>
+                        @endif
                     </div>
 
                     <div class="form-group">

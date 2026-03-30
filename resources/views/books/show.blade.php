@@ -23,7 +23,7 @@
                 <div class="book-layout">
                     <div class="stack-md">
                         <img
-                            src="https://via.placeholder.com/500x700/667eea/ffffff?text={{ urlencode($book->book_name) }}"
+                            src="{{ $book->cover_image_url }}"
                             alt="{{ $book->book_name }}"
                             class="book-image"
                         >
@@ -91,7 +91,7 @@
                                 data-book-author="{{ $book->author->author_name ?? 'Не указан' }}"
                                 data-book-price="{{ number_format((float) $book->price, 0, '.', '') }}"
                                 data-book-rating="{{ $book->average_rating ?? 0 }}"
-                                data-book-image="https://via.placeholder.com/500x700/667eea/ffffff?text={{ urlencode($book->book_name) }}"
+                                data-book-image="{{ $book->cover_image_url }}"
                                 data-book-url="{{ route('books.show', $book->getKey()) }}"
                                 aria-label="Добавить в избранное"
                             >

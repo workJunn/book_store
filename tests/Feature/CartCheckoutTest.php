@@ -4,7 +4,9 @@ use App\Models\Author;
 use App\Models\Book;
 use App\Models\Publisher;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 
 function createBookForCart(array $overrides = []): Book
 {
@@ -178,6 +180,8 @@ it('redirects browser checkout to the payment page with order data', function ()
 });
 
 it('marks order as paid and shows it in the user profile', function () {
+    Storage::fake('local');
+
     $user = User::factory()->create([
         'name' => 'Мария Соколова',
         'email' => 'maria@example.com',
@@ -185,6 +189,8 @@ it('marks order as paid and shows it in the user profile', function () {
     ]);
 
     $book = createBookForCart([
+        'digital_file_path' => UploadedFile::fake()->create('book.pdf', 32, 'application/pdf')->store('books/files', 'local'),
+        'digital_file_original_name' => 'book.pdf',
         'stock_quantity' => 2,
         'price' => 700.00,
     ]);
@@ -202,8 +208,9 @@ it('marks order as paid and shows it in the user profile', function () {
 
     $response = $this->actingAs($user)->post(route('orders.pay', $order));
 
-    $response->assertRedirect(route('dashboard'));
+    $response->assertRedirect(route('orders.show', $order));
     $response->assertSessionHas('status', 'Оплата прошла успешно.');
+    $response->assertSessionHas('auto_download_book_ids', [$book->getKey()]);
 
     $this->assertDatabaseHas('orders', [
         'id_orders' => $order->getKey(),
@@ -212,18 +219,55 @@ it('marks order as paid and shows it in the user profile', function () {
 
     expect((float) $user->fresh()->balance)->toBe(300.0);
 
-    $this->actingAs($user)->get(route('dashboard'))
-        ->assertOk()
-        ->assertSee('Мои заказы')
-        ->assertSee('Заказ №' . $order->getKey())
-        ->assertSee(number_format((float) $order->total_amount, 0, '.', ' ') . ' ₽')
-        ->assertDontSee('Палата №6')
-        ->assertDontSee('Оплачен');
-
-    $this->actingAs($user)->get(route('orders.show', $order))
+    $this->actingAs($user)->withSession([
+        'auto_download_book_ids' => [$book->getKey()],
+        'status' => 'Оплата прошла успешно.',
+    ])->get(route('orders.show', $order))
         ->assertOk()
         ->assertSee('Заказ №' . $order->getKey())
         ->assertSee('Оплачен')
         ->assertSee('Палата №6')
-        ->assertSee('Количество: 1');
+        ->assertSee('Количество: 1')
+        ->assertSee('Скачать файл книги')
+        ->assertSee('data-auto-download', false);
+});
+
+it('allows a buyer to download a paid digital book and blocks unpaid access', function () {
+    Storage::fake('local');
+
+    $buyer = User::factory()->create([
+        'balance' => 1500.00,
+    ]);
+
+    $otherUser = User::factory()->create();
+
+    $book = createBookForCart([
+        'digital_file_path' => UploadedFile::fake()->create('story.pdf', 64, 'application/pdf')->store('books/files', 'local'),
+        'digital_file_original_name' => 'story.pdf',
+        'price' => 700.00,
+        'stock_quantity' => 2,
+    ]);
+
+    $item = $book->toCartItem();
+    $item['quantity'] = 1;
+
+    $this->actingAs($buyer)->withSession([
+        'cart' => [
+            $book->getKey() => $item,
+        ],
+    ])->post('/cart/checkout');
+
+    $order = \App\Models\Order::query()->firstOrFail();
+
+    $this->actingAs($buyer)->get(route('orders.books.download', ['order' => $order, 'book' => $book]))
+        ->assertForbidden();
+
+    $this->actingAs($buyer)->post(route('orders.pay', $order));
+
+    $this->actingAs($buyer)->get(route('orders.books.download', ['order' => $order, 'book' => $book]))
+        ->assertOk()
+        ->assertHeader('content-disposition');
+
+    $this->actingAs($otherUser)->get(route('orders.books.download', ['order' => $order, 'book' => $book]))
+        ->assertForbidden();
 });

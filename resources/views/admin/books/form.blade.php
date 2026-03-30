@@ -18,7 +18,7 @@
                     <a href="{{ $backUrl }}" class="btn btn-secondary">Назад</a>
                 </div>
 
-                <form method="POST" action="{{ $formAction }}" class="stack-md">
+                <form method="POST" action="{{ $formAction }}" class="stack-md" enctype="multipart/form-data">
                     @csrf
                     @if($book->exists)
                         @method('PUT')
@@ -27,6 +27,26 @@
                     <div class="form-group">
                         <label for="book_name">Название книги</label>
                         <input id="book_name" name="book_name" type="text" value="{{ old('book_name', $book->book_name) }}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="cover">Обложка книги</label>
+                        <input id="cover" name="cover" type="file" accept="image/png,image/jpeg,image/webp,image/jpg">
+                        @error('cover')
+                            <div class="error-message">{{ $message }}</div>
+                        @enderror
+                        @error('remove_cover_image')
+                            <div class="error-message">{{ $message }}</div>
+                        @enderror
+                        @if($book->cover_image)
+                            <div class="stack-sm">
+                                <img src="{{ $book->cover_image_url }}" alt="{{ $book->book_name }}" class="book-image">
+                                <label class="checkbox-row">
+                                    <input type="checkbox" name="remove_cover_image" value="1" @checked(old('remove_cover_image'))>
+                                    <span>Удалить текущую обложку</span>
+                                </label>
+                            </div>
+                        @endif
                     </div>
 
                     <div class="form-group">

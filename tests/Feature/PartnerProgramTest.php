@@ -6,6 +6,20 @@ use App\Models\PartnerApplication;
 use App\Models\Publisher;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+
+function makePartnerCoverUpload(string $filename = 'cover.png'): UploadedFile
+{
+    $path = tempnam(sys_get_temp_dir(), 'cover_');
+
+    file_put_contents(
+        $path,
+        base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9sX6lzQAAAAASUVORK5CYII=')
+    );
+
+    return new UploadedFile($path, $filename, 'image/png', null, true);
+}
 
 it('allows a user to submit a partner application', function () {
     $userRole = Role::create([
@@ -137,4 +151,97 @@ it('allows an approved author to manage own books with discount editing', functi
         'price' => 990,
         'discount_percent' => 25,
     ]);
+});
+
+it('allows an approved author to upload a digital book file from the same form', function () {
+    Storage::fake('local');
+
+    $authorRole = Role::create([
+        'role_name' => 'author',
+    ]);
+
+    $user = User::factory()->create([
+        'id_role' => $authorRole->getKey(),
+    ]);
+
+    $author = Author::create([
+        'id_users' => $user->getKey(),
+        'author_name' => 'Анна Автор',
+        'biography' => 'Биография автора.',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Новая Волна',
+    ]);
+
+    $this->actingAs($user)->post(route('author.books.store'), [
+        'book_name' => 'Электронная книга',
+        'book_file' => UploadedFile::fake()->create('book.pdf', 32, 'application/pdf'),
+        'price' => 900,
+        'discount_percent' => 15,
+        'stock_quantity' => 12,
+        'publication_date' => '2026-03-20',
+        'number_of_pages' => 280,
+        'description' => 'Описание книги.',
+        'id_publishers' => $publisher->getKey(),
+    ])->assertRedirect(route('author.index'));
+
+    $book = Book::query()->where('book_name', 'Электронная книга')->firstOrFail();
+
+    expect($book->digital_file_path)->not->toBeNull();
+    expect($book->digital_file_original_name)->toBe('book.pdf');
+    Storage::disk('local')->assertExists($book->digital_file_path);
+});
+
+it('allows an author to remove an uploaded cover from the edit page', function () {
+    Storage::fake('public');
+
+    $authorRole = Role::create([
+        'role_name' => 'author',
+    ]);
+
+    $user = User::factory()->create([
+        'id_role' => $authorRole->getKey(),
+    ]);
+
+    $author = Author::create([
+        'id_users' => $user->getKey(),
+        'author_name' => 'Анна Автор',
+        'biography' => 'Биография автора.',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Новая Волна',
+    ]);
+
+    $book = Book::create([
+        'book_name' => 'Новая книга',
+        'cover_image' => makePartnerCoverUpload('cover.png')->store('books', 'public'),
+        'price' => 900,
+        'discount_percent' => 15,
+        'stock_quantity' => 12,
+        'publication_date' => '2026-03-20',
+        'number_of_pages' => 280,
+        'description' => 'Описание книги.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $oldCoverPath = $book->cover_image;
+    Storage::disk('public')->assertExists($oldCoverPath);
+
+    $this->actingAs($user)->put(route('author.books.update', $book), [
+        'book_name' => 'Новая книга',
+        'remove_cover_image' => '1',
+        'price' => 990,
+        'discount_percent' => 25,
+        'stock_quantity' => 9,
+        'publication_date' => '2026-03-20',
+        'number_of_pages' => 280,
+        'description' => 'Обновленное описание книги.',
+        'id_publishers' => $publisher->getKey(),
+    ])->assertRedirect(route('author.index'));
+
+    expect($book->fresh()->cover_image)->toBeNull();
+    Storage::disk('public')->assertMissing($oldCoverPath);
 });

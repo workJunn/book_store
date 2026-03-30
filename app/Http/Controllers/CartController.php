@@ -8,6 +8,8 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 class CartController extends Controller
 {
@@ -172,8 +174,31 @@ class CartController extends Controller
         }
 
         return redirect()
-            ->route('dashboard')
-            ->with('status', 'Оплата прошла успешно.');
+            ->route('orders.show', $order)
+            ->with('status', 'Оплата прошла успешно.')
+            ->with('auto_download_book_ids', $order->details()
+                ->whereHas('book', fn ($query) => $query->whereNotNull('digital_file_path'))
+                ->pluck('id_books')
+                ->map(fn ($id) => (int) $id)
+                ->all());
+    }
+
+    public function download(Order $order, Book $book)
+    {
+        abort_unless((int) $order->id_users === (int) Auth::id(), 403);
+        abort_unless($order->status === 'Оплачен', 403);
+
+        $hasBookInOrder = $order->details()
+            ->where('id_books', $book->getKey())
+            ->exists();
+
+        abort_unless($hasBookInOrder && $book->digital_file_path, 404);
+
+        return Storage::disk('local')->download(
+            $book->digital_file_path,
+            $book->digital_file_download_name,
+            ['Content-Disposition' => ResponseHeaderBag::DISPOSITION_ATTACHMENT]
+        );
     }
 
     public function checkout(Request $request)

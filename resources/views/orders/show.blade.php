@@ -47,6 +47,10 @@
                         <div class="info-value">{{ number_format((float) $order->total_amount, 0, '.', ' ') }} ₽</div>
                     </div>
                 </div>
+
+                @if(session('status'))
+                    <div class="success-box">{{ session('status') }}</div>
+                @endif
             </section>
 
             <section class="stack-md">
@@ -59,7 +63,7 @@
                     @foreach($orderDetails as $detail)
                         <article class="cart-item">
                             <img
-                                src="https://via.placeholder.com/500x700/667eea/ffffff?text={{ urlencode($detail->book->book_name ?? 'Книга') }}"
+                                src="{{ $detail->book?->cover_image_url ?? 'https://via.placeholder.com/500x700/667eea/ffffff?text=' . urlencode($detail->book->book_name ?? 'Книга') }}"
                                 class="cart-image"
                                 alt="{{ $detail->book->book_name ?? 'Книга' }}"
                             >
@@ -70,6 +74,19 @@
                                 <div class="muted">Количество: {{ $detail->quantity }}</div>
                                 <div class="muted">Цена за экземпляр: {{ number_format((float) $detail->price_per_item, 0, '.', ' ') }} ₽</div>
                                 <div class="muted">Сумма позиции: {{ number_format((float) ($detail->price_per_item * $detail->quantity), 0, '.', ' ') }} ₽</div>
+                                @if($order->status === 'Оплачен' && $detail->book?->digital_file_path)
+                                    <div class="actions">
+                                        <a
+                                            href="{{ route('orders.books.download', ['order' => $order, 'book' => $detail->book]) }}"
+                                            class="btn btn-primary"
+                                            @if($autoDownloadBookIds->contains((int) $detail->book->getKey())) data-auto-download @endif
+                                        >
+                                            Скачать файл книги
+                                        </a>
+                                    </div>
+                                @elseif($order->status === 'Оплачен')
+                                    <div class="muted">Цифровой файл для этой книги не загружен.</div>
+                                @endif
                             </div>
 
                             <div class="item-total">

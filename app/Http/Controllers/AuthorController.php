@@ -5,8 +5,10 @@ namespace App\Http\Controllers;
 use App\Models\Book;
 use App\Models\Genre;
 use App\Models\Publisher;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 
 class AuthorController extends Controller
 {
@@ -37,6 +39,8 @@ class AuthorController extends Controller
         $author = Auth::user()->authorProfile()->firstOrFail();
         $validated = $this->validateBook($request);
         $validated['id_author'] = $author->getKey();
+        $validated['cover_image'] = $this->storeCoverImage($request);
+        [$validated['digital_file_path'], $validated['digital_file_original_name']] = $this->storeDigitalBookFile($request);
 
         $book = Book::create($validated);
         $book->genres()->sync($request->input('genre_ids', []));
@@ -70,6 +74,8 @@ class AuthorController extends Controller
 
         $validated = $this->validateBook($request);
         $validated['id_author'] = $author->getKey();
+        $validated['cover_image'] = $this->resolveCoverImagePath($request, $book);
+        [$validated['digital_file_path'], $validated['digital_file_original_name']] = $this->resolveDigitalBookFile($request, $book);
 
         $book->update($validated);
         $book->genres()->sync($request->input('genre_ids', []));
@@ -83,6 +89,10 @@ class AuthorController extends Controller
     {
         return $request->validate([
             'book_name' => ['required', 'string', 'max:200'],
+            'cover' => ['nullable', 'image', 'max:5120'],
+            'remove_cover_image' => ['nullable', 'boolean'],
+            'book_file' => ['nullable', 'file', 'mimes:pdf,epub,fb2,txt', 'max:51200'],
+            'remove_book_file' => ['nullable', 'boolean'],
             'price' => ['required', 'numeric', 'min:0'],
             'discount_percent' => ['required', 'integer', 'between:0,95'],
             'stock_quantity' => ['required', 'integer', 'min:0'],
@@ -94,5 +104,80 @@ class AuthorController extends Controller
             'genre_ids' => ['nullable', 'array'],
             'genre_ids.*' => ['exists:genres,id_genre'],
         ]);
+    }
+
+    private function storeCoverImage(Request $request): ?string
+    {
+        if (! $request->hasFile('cover')) {
+            return null;
+        }
+
+        return $request->file('cover')->store('books', 'public');
+    }
+
+    private function resolveCoverImagePath(Request $request, Book $book): ?string
+    {
+        if ($request->boolean('remove_cover_image')) {
+            $this->deleteCoverImage($book->cover_image);
+
+            return null;
+        }
+
+        if (! $request->hasFile('cover')) {
+            return $book->cover_image;
+        }
+
+        $newCoverImagePath = $this->storeCoverImage($request);
+        $this->deleteCoverImage($book->cover_image);
+
+        return $newCoverImagePath;
+    }
+
+    private function deleteCoverImage(?string $path): void
+    {
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
+    }
+
+    private function storeDigitalBookFile(Request $request): array
+    {
+        $file = $request->file('book_file');
+
+        if (! $file instanceof UploadedFile) {
+            return [null, null];
+        }
+
+        return [
+            $file->store('books/files', 'local'),
+            $file->getClientOriginalName(),
+        ];
+    }
+
+    private function resolveDigitalBookFile(Request $request, Book $book): array
+    {
+        if ($request->boolean('remove_book_file')) {
+            $this->deleteDigitalBookFile($book->digital_file_path);
+
+            return [null, null];
+        }
+
+        $file = $request->file('book_file');
+
+        if (! $file instanceof UploadedFile) {
+            return [$book->digital_file_path, $book->digital_file_original_name];
+        }
+
+        $storedFile = $this->storeDigitalBookFile($request);
+        $this->deleteDigitalBookFile($book->digital_file_path);
+
+        return $storedFile;
+    }
+
+    private function deleteDigitalBookFile(?string $path): void
+    {
+        if ($path) {
+            Storage::disk('local')->delete($path);
+        }
     }
 }

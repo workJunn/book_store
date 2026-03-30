@@ -48,13 +48,20 @@
 
                 @forelse($books as $book)
                     <article class="info-box stack-sm">
-                        <div class="order-line">
-                            <a href="{{ route('books.show', $book) }}" class="text-link">{{ $book->book_name }}</a>
-                            <span>{{ number_format((float) $book->price, 0, '.', ' ') }} ₽</span>
-                            <span>Скидка {{ $book->discount_percent }}%</span>
-                        </div>
-                        <div class="actions">
-                            <a href="{{ route('author.books.edit', $book) }}" class="btn btn-secondary">Редактировать</a>
+                        <div class="section-head">
+                            <div class="actions">
+                                <img src="{{ $book->cover_image_url }}" alt="{{ $book->book_name }}" class="cart-image">
+                                <div class="stack-sm">
+                                    <a href="{{ route('books.show', $book) }}" class="text-link">{{ $book->book_name }}</a>
+                                    <div class="muted">
+                                        {{ number_format((float) $book->price, 0, '.', ' ') }} ₽ · Скидка {{ $book->discount_percent }}% · Остаток {{ $book->stock_quantity }}
+                                    </div>
+                                    <div class="muted">{{ $book->digital_file_path ? 'Файл книги загружен' : 'Файл книги не загружен' }}</div>
+                                </div>
+                            </div>
+                            <div class="actions">
+                                <a href="{{ route('author.books.edit', $book) }}" class="btn btn-secondary">Редактировать</a>
+                            </div>
                         </div>
                     </article>
                 @empty

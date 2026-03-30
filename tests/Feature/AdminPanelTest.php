@@ -6,6 +6,20 @@ use App\Models\Order;
 use App\Models\Publisher;
 use App\Models\Role;
 use App\Models\User;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
+
+function makeTestPngUpload(string $filename = 'cover.png'): UploadedFile
+{
+    $path = tempnam(sys_get_temp_dir(), 'cover_');
+
+    file_put_contents(
+        $path,
+        base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAusB9sX6lzQAAAAASUVORK5CYII=')
+    );
+
+    return new UploadedFile($path, $filename, 'image/png', null, true);
+}
 
 it('allows only admins to open the admin panel', function () {
     $adminRole = Role::create([
@@ -246,6 +260,46 @@ it('allows admin to create and update a book', function () {
         'price' => 700,
         'stock_quantity' => 10,
     ]);
+});
+
+it('allows admin to upload a cover image for a book', function () {
+    Storage::fake('public');
+
+    $adminRole = Role::create([
+        'role_name' => 'admin',
+    ]);
+
+    $admin = User::factory()->create([
+        'id_role' => $adminRole->getKey(),
+    ]);
+
+    $author = Author::create([
+        'author_name' => 'Николай Гоголь',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Просвещение',
+    ]);
+
+    $cover = makeTestPngUpload('dead-souls.png');
+
+    $this->actingAs($admin)->post(route('admin.books.store'), [
+        'book_name' => 'Мертвые души',
+        'cover' => $cover,
+        'price' => 650,
+        'discount_percent' => 10,
+        'stock_quantity' => 7,
+        'publication_date' => '1842-01-01',
+        'number_of_pages' => 320,
+        'description' => 'Поэма в прозе.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ])->assertRedirect(route('admin.books.index'));
+
+    $book = Book::query()->where('book_name', 'Мертвые души')->firstOrFail();
+
+    expect($book->cover_image)->not->toBeNull();
+    Storage::disk('public')->assertExists($book->cover_image);
 });
 
 it('shows a compact orders list and opens order details for admin', function () {

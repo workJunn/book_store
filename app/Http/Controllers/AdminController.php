@@ -14,6 +14,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 class AdminController extends Controller
@@ -229,6 +230,7 @@ class AdminController extends Controller
     public function storeBook(Request $request)
     {
         $validated = $this->validateBook($request);
+        $validated['cover_image'] = $this->storeCoverImage($request);
 
         $book = Book::create($validated);
         $book->genres()->sync($request->input('genre_ids', []));
@@ -259,6 +261,7 @@ class AdminController extends Controller
     public function updateBook(Request $request, Book $book)
     {
         $validated = $this->validateBook($request);
+        $validated['cover_image'] = $this->resolveCoverImagePath($request, $book);
 
         $book->update($validated);
         $book->genres()->sync($request->input('genre_ids', []));
@@ -270,6 +273,8 @@ class AdminController extends Controller
 
     public function destroyBook(Book $book)
     {
+        $this->deleteCoverImage($book->cover_image);
+        $this->deleteDigitalBookFile($book->digital_file_path);
         $book->genres()->detach();
         $book->delete();
 
@@ -303,6 +308,8 @@ class AdminController extends Controller
     {
         return $request->validate([
             'book_name' => ['required', 'string', 'max:200'],
+            'cover' => ['nullable', 'image', 'max:5120'],
+            'remove_cover_image' => ['nullable', 'boolean'],
             'price' => ['required', 'numeric', 'min:0'],
             'discount_percent' => ['required', 'integer', 'between:0,95'],
             'stock_quantity' => ['required', 'integer', 'min:0'],
@@ -315,6 +322,47 @@ class AdminController extends Controller
             'genre_ids' => ['nullable', 'array'],
             'genre_ids.*' => ['exists:genres,id_genre'],
         ]);
+    }
+
+    private function storeCoverImage(Request $request): ?string
+    {
+        if (! $request->hasFile('cover')) {
+            return null;
+        }
+
+        return $request->file('cover')->store('books', 'public');
+    }
+
+    private function resolveCoverImagePath(Request $request, Book $book): ?string
+    {
+        if ($request->boolean('remove_cover_image')) {
+            $this->deleteCoverImage($book->cover_image);
+
+            return null;
+        }
+
+        if (! $request->hasFile('cover')) {
+            return $book->cover_image;
+        }
+
+        $newCoverImagePath = $this->storeCoverImage($request);
+        $this->deleteCoverImage($book->cover_image);
+
+        return $newCoverImagePath;
+    }
+
+    private function deleteCoverImage(?string $path): void
+    {
+        if ($path) {
+            Storage::disk('public')->delete($path);
+        }
+    }
+
+    private function deleteDigitalBookFile(?string $path): void
+    {
+        if ($path) {
+            Storage::disk('local')->delete($path);
+        }
     }
 
     private function extractKeywords(string $query): array

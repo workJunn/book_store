@@ -63,7 +63,7 @@
                                 <article class="store-card store-card--promo">
                                     <a href="{{ route('books.show', $book->getKey()) }}" class="card__image-link">
                                         <img
-                                            src="https://via.placeholder.com/500x700/667eea/ffffff?text={{ urlencode($book->book_name) }}"
+                                            src="{{ $book->cover_image_url }}"
                                             class="card__image"
                                             alt="{{ $book->book_name }}"
                                         >
@@ -98,7 +98,7 @@
                                                 data-book-author="{{ $book->author->author_name ?? 'Не указан' }}"
                                                 data-book-price="{{ number_format((float) $book->price, 0, '.', '') }}"
                                                 data-book-rating="{{ $book->average_rating ?? 0 }}"
-                                                data-book-image="https://via.placeholder.com/500x700/667eea/ffffff?text={{ urlencode($book->book_name) }}"
+                                                data-book-image="{{ $book->cover_image_url }}"
                                                 data-book-url="{{ route('books.show', $book->getKey()) }}"
                                                 aria-label="Добавить в избранное"
                                             >

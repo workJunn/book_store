@@ -32,6 +32,7 @@ Route::post('/cart/clear', [CartController::class, 'clear'])->name('cart.clear')
 Route::get('/orders/{order}/payment', [CartController::class, 'payment'])->middleware('auth')->name('orders.payment');
 Route::post('/orders/{order}/pay', [CartController::class, 'pay'])->middleware('auth')->name('orders.pay');
 Route::get('/orders/{order}', [ProfileController::class, 'showOrder'])->middleware('auth')->name('orders.show');
+Route::get('/orders/{order}/books/{book}/download', [CartController::class, 'download'])->middleware('auth')->name('orders.books.download');
 
 Route::get('/register', [RegisterController::class, 'create'])->middleware('guest')->name('register');
 Route::post('/register', [RegisterController::class, 'store'])->middleware('guest');

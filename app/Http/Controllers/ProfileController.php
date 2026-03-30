@@ -33,6 +33,7 @@ class ProfileController extends Controller
             'order' => $order,
             'orderDetails' => $order->details,
             'user' => $order->user,
+            'autoDownloadBookIds' => collect(session('auto_download_book_ids', []))->map(fn ($id) => (int) $id),
         ]);
     }
 

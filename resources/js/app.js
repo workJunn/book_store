@@ -576,6 +576,24 @@ function initBookShelves() {
     });
 }
 
+function triggerPurchasedBookDownloads() {
+    const autoDownloadLinks = document.querySelectorAll('[data-auto-download]');
+
+    if (!autoDownloadLinks.length) {
+        return;
+    }
+
+    window.setTimeout(() => {
+        autoDownloadLinks.forEach((link, index) => {
+            window.setTimeout(() => {
+                if (link instanceof HTMLAnchorElement) {
+                    link.click();
+                }
+            }, index * 400);
+        });
+    }, 600);
+}
+
 function initReviewsHub() {
     const hub = document.querySelector('[data-reviews-hub]');
 
@@ -825,4 +843,8 @@ document.addEventListener('keydown', (event) => {
         event.preventDefault();
         firstElement.focus();
     }
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    triggerPurchasedBookDownloads();
 });
