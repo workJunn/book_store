@@ -3,6 +3,8 @@
         <div>Книжный Мир</div>
         <div class="site-footer__links">
             <a href="{{ route('catalog') }}">Каталог</a>
+            <a href="{{ route('payment-methods') }}">Оплата</a>
+            <a href="{{ route('partner.program') }}">Партнерская программа</a>
             <a href="{{ route('favorites') }}">Избранное</a>
             <a href="{{ route('cart.index') }}">Корзина</a>
         </div>

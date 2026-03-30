@@ -3,19 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $formTitle }} - Админ панель</title>
+    <title>{{ $formTitle }} - Панель автора</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
-<body class="page-shell page-shell--column admin-page" data-home-url="{{ route('home') }}">
+<body class="page-shell page-shell--column" data-home-url="{{ route('catalog') }}">
+    @include('partials.site-header', ['showAuthButtons' => false])
+
     <main class="site-main">
         <section class="container">
             <section class="auth-card stack-md">
                 <div class="section-head">
                     <div>
                         <h1 class="section-title">{{ $formTitle }}</h1>
-                        <p class="section-text">Управление карточкой книги в каталоге.</p>
+                        <p class="section-text">Авторская карточка книги. Здесь можно менять цену, скидку и остальные основные данные.</p>
                     </div>
-                    <a href="{{ $backUrl }}" class="btn btn-secondary">Назад</a>
+                    <a href="{{ route('author.index') }}" class="btn btn-secondary">Назад</a>
                 </div>
 
                 <form method="POST" action="{{ $formAction }}" class="stack-md">
@@ -26,22 +28,22 @@
 
                     <div class="form-group">
                         <label for="book_name">Название книги</label>
-                        <input id="book_name" name="book_name" type="text" value="{{ old('book_name', $book->book_name) }}">
+                        <input id="book_name" name="book_name" type="text" value="{{ old('book_name', $book->book_name) }}" required>
                     </div>
 
                     <div class="form-group">
                         <label for="price">Цена</label>
-                        <input id="price" name="price" type="number" step="0.01" min="0" value="{{ old('price', $book->price) }}">
+                        <input id="price" name="price" type="number" step="0.01" min="0" value="{{ old('price', $book->price) }}" required>
                     </div>
 
                     <div class="form-group">
                         <label for="discount_percent">Скидка, %</label>
-                        <input id="discount_percent" name="discount_percent" type="number" min="0" max="95" value="{{ old('discount_percent', $book->discount_percent ?? 0) }}">
+                        <input id="discount_percent" name="discount_percent" type="number" min="0" max="95" value="{{ old('discount_percent', $book->discount_percent ?? 0) }}" required>
                     </div>
 
                     <div class="form-group">
                         <label for="stock_quantity">Остаток</label>
-                        <input id="stock_quantity" name="stock_quantity" type="number" min="0" value="{{ old('stock_quantity', $book->stock_quantity) }}">
+                        <input id="stock_quantity" name="stock_quantity" type="number" min="0" value="{{ old('stock_quantity', $book->stock_quantity) }}" required>
                     </div>
 
                     <div class="form-group">
@@ -51,17 +53,7 @@
 
                     <div class="form-group">
                         <label for="number_of_pages">Количество страниц</label>
-                        <input id="number_of_pages" name="number_of_pages" type="number" min="1" value="{{ old('number_of_pages', $book->number_of_pages) }}">
-                    </div>
-
-                    <div class="form-group">
-                        <label for="id_author">Автор</label>
-                        <select id="id_author" name="id_author">
-                            <option value="">Не выбран</option>
-                            @foreach($authors as $author)
-                                <option value="{{ $author->getKey() }}" @selected((string) old('id_author', $book->id_author) === (string) $author->getKey())>{{ $author->author_name }}</option>
-                            @endforeach
-                        </select>
+                        <input id="number_of_pages" name="number_of_pages" type="number" min="1" value="{{ old('number_of_pages', $book->number_of_pages) }}" required>
                     </div>
 
                     <div class="form-group">
@@ -98,5 +90,7 @@
             </section>
         </section>
     </main>
+
+    @include('partials.site-footer')
 </body>
 </html>

@@ -32,6 +32,8 @@
                     <div class="success-box">{{ session('status') }}</div>
                 @endif
 
+                @php($latestPartnerApplication = $user->partnerApplications->first())
+
                 <section class="profile-section stack-md">
                     <div>
                         <h2 class="subheading">Личные данные</h2>
@@ -76,6 +78,36 @@
                             <div class="info-label">Последнее обновление</div>
                             <div class="info-value">{{ $user->updated_at ? $user->updated_at->format('d.m.Y H:i') : 'Не обновлялся' }}</div>
                         </article>
+                        <article class="info-box profile-card">
+                            <div class="info-label">Партнерская программа</div>
+                            <div class="info-value">
+                                @if($user->isAuthor())
+                                    Автор подключен
+                                @elseif($latestPartnerApplication)
+                                    {{ match($latestPartnerApplication->status) {
+                                        'approved' => 'Заявка одобрена',
+                                        default => 'Заявка на рассмотрении',
+                                    } }}
+                                @else
+                                    Вы еще не подали заявку
+                                @endif
+                            </div>
+                        </article>
+                    </div>
+                </section>
+
+                <section class="stack-md">
+                    <div>
+                        <h2 class="subheading">Быстрые действия</h2>
+                        <p class="section-text">Управление оплатой, партнерской программой и личным кабинетом автора.</p>
+                    </div>
+
+                    <div class="actions">
+                        <a href="{{ route('payment-methods') }}" class="btn btn-secondary">Способы оплаты</a>
+                        <a href="{{ route('partner.program') }}" class="btn btn-secondary">Партнерская программа</a>
+                        @if($user->isAuthor())
+                            <a href="{{ route('author.index') }}" class="btn btn-secondary">Панель автора</a>
+                        @endif
                     </div>
                 </section>
 

@@ -218,6 +218,7 @@ it('allows admin to create and update a book', function () {
     $this->actingAs($admin)->post(route('admin.books.store'), [
         'book_name' => 'Мертвые души',
         'price' => 650,
+        'discount_percent' => 10,
         'stock_quantity' => 7,
         'publication_date' => '1842-01-01',
         'number_of_pages' => 320,
@@ -231,6 +232,7 @@ it('allows admin to create and update a book', function () {
     $this->actingAs($admin)->put(route('admin.books.update', $book), [
         'book_name' => 'Мертвые души',
         'price' => 700,
+        'discount_percent' => 15,
         'stock_quantity' => 10,
         'publication_date' => '1842-01-01',
         'number_of_pages' => 320,

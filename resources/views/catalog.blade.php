@@ -53,12 +53,12 @@
 
                     @if($books->count())
                         <section class="catalog-grid">
-                            @foreach($books as $book)
-                                @php
-                                    $currentPrice = (float) $book->price;
-                                    $oldPrice = ceil(($currentPrice * 1.2) / 10) * 10;
-                                    $discountPercent = max(10, (int) round((1 - ($currentPrice / $oldPrice)) * 100));
-                                @endphp
+                                @foreach($books as $book)
+                                    @php
+                                        $currentPrice = (float) $book->price;
+                                        $oldPrice = $book->getOriginalPrice();
+                                        $discountPercent = $book->getDisplayDiscountPercent();
+                                    @endphp
 
                                 <article class="store-card store-card--promo">
                                     <a href="{{ route('books.show', $book->getKey()) }}" class="card__image-link">
@@ -72,8 +72,10 @@
                                         <div class="price-stack">
                                             <div class="price">{{ number_format($currentPrice, 0, '.', ' ') }} ₽</div>
                                             <div class="price-meta">
-                                                <span class="price-old">{{ number_format($oldPrice, 0, '.', ' ') }} ₽</span>
-                                                <span class="discount-badge">-{{ $discountPercent }}%</span>
+                                                @if($discountPercent > 0)
+                                                    <span class="price-old">{{ number_format($oldPrice, 0, '.', ' ') }} ₽</span>
+                                                    <span class="discount-badge">-{{ $discountPercent }}%</span>
+                                                @endif
                                             </div>
                                         </div>
 

@@ -9,6 +9,8 @@ use App\Http\Controllers\BookController;
 use App\Http\Controllers\CartController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AuthorController;
+use App\Http\Controllers\PartnerProgramController;
 
 
 
@@ -16,6 +18,8 @@ Route::get('/', [BookController::class, 'welcome'])->name('home');
 Route::get('/catalog', [BookController::class, 'catalog'])->name('catalog');
 Route::get('/search', [BookController::class, 'search'])->name('books.search');
 Route::get('/favorites', [BookController::class, 'favorites'])->name('favorites');
+Route::view('/payment-methods', 'payment-methods')->name('payment-methods');
+Route::get('/partner-program', [PartnerProgramController::class, 'show'])->name('partner.program');
 Route::get('/books/{book}', [BookController::class, 'show'])->name('books.show');
 Route::post('/books/{book}/reviews', [BookController::class, 'storeReview'])->middleware('auth')->name('books.reviews.store');
 
@@ -47,9 +51,27 @@ Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.c
 Route::get('/dashboard', [ProfileController::class, 'index'])
     ->middleware('auth')
     ->name('dashboard');
+Route::post('/partner-program/apply', [PartnerProgramController::class, 'apply'])
+    ->middleware('auth')
+    ->name('partner.program.apply');
 Route::post('/balance/top-up', [ProfileController::class, 'topUp'])
     ->middleware('auth')
     ->name('balance.topup');
+Route::get('/author', [AuthorController::class, 'index'])
+    ->middleware(['auth', 'author'])
+    ->name('author.index');
+Route::get('/author/books/create', [AuthorController::class, 'createBook'])
+    ->middleware(['auth', 'author'])
+    ->name('author.books.create');
+Route::post('/author/books', [AuthorController::class, 'storeBook'])
+    ->middleware(['auth', 'author'])
+    ->name('author.books.store');
+Route::get('/author/books/{book}/edit', [AuthorController::class, 'editBook'])
+    ->middleware(['auth', 'author'])
+    ->name('author.books.edit');
+Route::match(['put', 'patch'], '/author/books/{book}', [AuthorController::class, 'updateBook'])
+    ->middleware(['auth', 'author'])
+    ->name('author.books.update');
 Route::get('/admin', [AdminController::class, 'index'])
     ->middleware(['auth', 'admin'])
     ->name('admin.index');
@@ -65,6 +87,12 @@ Route::get('/admin/authors/{author}', [AdminController::class, 'showAuthor'])
 Route::get('/admin/users', [AdminController::class, 'users'])
     ->middleware(['auth', 'admin'])
     ->name('admin.users.index');
+Route::get('/admin/partner-applications', [AdminController::class, 'partnerApplications'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.partner-applications.index');
+Route::post('/admin/partner-applications/{application}/approve', [AdminController::class, 'approvePartnerApplication'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.partner-applications.approve');
 Route::get('/admin/users/{user}', [AdminController::class, 'showUser'])
     ->middleware(['auth', 'admin'])
     ->name('admin.users.show');
@@ -95,3 +123,4 @@ Route::get('/admin/orders', [AdminController::class, 'orders'])
 Route::get('/admin/orders/{order}', [AdminController::class, 'showOrder'])
     ->middleware(['auth', 'admin'])
     ->name('admin.orders.show');
+    

@@ -72,8 +72,8 @@
                                 @foreach($newArrivals as $book)
                                     @php
                                         $currentPrice = (float) $book->price;
-                                        $oldPrice = ceil(($currentPrice * 1.2) / 10) * 10;
-                                        $discountPercent = max(10, (int) round((1 - ($currentPrice / $oldPrice)) * 100));
+                                        $oldPrice = $book->getOriginalPrice();
+                                        $discountPercent = $book->getDisplayDiscountPercent();
                                     @endphp
 
                                     <article class="store-card store-card--promo">
@@ -87,12 +87,14 @@
 
                                         <div class="card__body">
                                             <div class="price-stack">
-                                                <div class="price">{{ number_format($currentPrice, 0, '.', ' ') }} ₽</div>
-                                                <div class="price-meta">
+                                            <div class="price">{{ number_format($currentPrice, 0, '.', ' ') }} ₽</div>
+                                            <div class="price-meta">
+                                                @if($discountPercent > 0)
                                                     <span class="price-old">{{ number_format($oldPrice, 0, '.', ' ') }} ₽</span>
                                                     <span class="discount-badge">-{{ $discountPercent }}%</span>
-                                                </div>
+                                                @endif
                                             </div>
+                                        </div>
 
                                             <a href="{{ route('books.show', $book->getKey()) }}" class="card__title">{{ $book->book_name }}</a>
                                             <p class="muted">{{ $book->author->author_name ?? 'Автор не указан' }}</p>
@@ -127,8 +129,8 @@
                                             @foreach($shelf['books'] as $book)
                                                 @php
                                                     $currentPrice = (float) $book->price;
-                                                    $oldPrice = ceil(($currentPrice * 1.2) / 10) * 10;
-                                                    $discountPercent = max(10, (int) round((1 - ($currentPrice / $oldPrice)) * 100));
+                                                    $oldPrice = $book->getOriginalPrice();
+                                                    $discountPercent = $book->getDisplayDiscountPercent();
                                                 @endphp
 
                                                 <article class="store-card store-card--promo">
@@ -143,8 +145,10 @@
                                                         <div class="price-stack">
                                                             <div class="price">{{ number_format($currentPrice, 0, '.', ' ') }} ₽</div>
                                                             <div class="price-meta">
-                                                                <span class="price-old">{{ number_format($oldPrice, 0, '.', ' ') }} ₽</span>
-                                                                <span class="discount-badge">-{{ $discountPercent }}%</span>
+                                                                @if($discountPercent > 0)
+                                                                    <span class="price-old">{{ number_format($oldPrice, 0, '.', ' ') }} ₽</span>
+                                                                    <span class="discount-badge">-{{ $discountPercent }}%</span>
+                                                                @endif
                                                             </div>
                                                         </div>
 

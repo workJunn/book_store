@@ -15,6 +15,7 @@ class Book extends Model
     protected $fillable = [
         'book_name',
         'price',
+        'discount_percent',
         'stock_quantity',
         'is_preorder',
         'publication_date',
@@ -30,6 +31,7 @@ class Book extends Model
         'average_rating' => 'decimal:2',
         'publication_date' => 'date',
         'is_preorder' => 'boolean',
+        'discount_percent' => 'integer',
     ];
 
     public function author()
@@ -75,5 +77,22 @@ class Book extends Model
             'quantity' => 1,
             'stock_quantity' => $this->stock_quantity,
         ];
+    }
+
+    public function getOriginalPrice(): float
+    {
+        $discountPercent = max(0, min(95, (int) $this->discount_percent));
+        $currentPrice = (float) $this->price;
+
+        if ($discountPercent === 0) {
+            return (float) (ceil(($currentPrice * 1.2) / 10) * 10);
+        }
+
+        return round($currentPrice / (1 - ($discountPercent / 100)), 2);
+    }
+
+    public function getDisplayDiscountPercent(): int
+    {
+        return max(0, min(95, (int) $this->discount_percent));
     }
 }

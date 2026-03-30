@@ -13,6 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->alias([
             'admin' => \App\Http\Middleware\EnsureUserIsAdmin::class,
+            'author' => \App\Http\Middleware\EnsureUserIsAuthor::class,
         ]);
 
         // // 🔹 Куда перенаправлять гостей (неавторизованных) fn () это просто стрелочная функция 

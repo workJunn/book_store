@@ -6,8 +6,10 @@ use App\Models\Author;
 use App\Models\Book;
 use App\Models\Genre;
 use App\Models\Order;
+use App\Models\PartnerApplication;
 use App\Models\Publisher;
 use App\Models\Review;
+use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Database\Eloquent\Builder;
@@ -29,6 +31,7 @@ class AdminController extends Controller
             'booksCount' => Book::query()->count(),
             'ordersCount' => Order::query()->count(),
             'paidOrdersCount' => Order::query()->where('status', 'Оплачен')->count(),
+            'partnerApplicationsCount' => PartnerApplication::query()->where('status', 'pending')->count(),
             'latestOrders' => $latestOrders,
         ]);
     }
@@ -54,6 +57,53 @@ class AdminController extends Controller
                 ->select('users.*')
                 ->get(),
         ]);
+    }
+
+    public function partnerApplications()
+    {
+        return view('admin.partner-applications.index', [
+            'applications' => PartnerApplication::query()
+                ->with('user')
+                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+                ->orderByDesc('created_at')
+                ->get(),
+        ]);
+    }
+
+    public function approvePartnerApplication(PartnerApplication $application)
+    {
+        if ($application->status === 'approved') {
+            return redirect()
+                ->route('admin.partner-applications.index')
+                ->with('status', 'Заявка уже была подтверждена ранее.');
+        }
+
+        DB::transaction(function () use ($application) {
+            $authorRole = Role::query()->firstOrCreate([
+                'role_name' => 'author',
+            ]);
+
+            $application->user()->update([
+                'id_role' => $authorRole->getKey(),
+            ]);
+
+            Author::query()->updateOrCreate(
+                ['id_users' => $application->id_users],
+                [
+                    'author_name' => $application->pen_name,
+                    'biography' => $application->biography,
+                ]
+            );
+
+            $application->update([
+                'status' => 'approved',
+                'processed_at' => now(),
+            ]);
+        });
+
+        return redirect()
+            ->route('admin.partner-applications.index')
+            ->with('status', 'Заявка подтверждена. Пользователь переведен в роль автора.');
     }
 
     public function search(Request $request)
@@ -254,6 +304,7 @@ class AdminController extends Controller
         return $request->validate([
             'book_name' => ['required', 'string', 'max:200'],
             'price' => ['required', 'numeric', 'min:0'],
+            'discount_percent' => ['required', 'integer', 'between:0,95'],
             'stock_quantity' => ['required', 'integer', 'min:0'],
             'publication_date' => ['nullable', 'date'],
             'number_of_pages' => ['required', 'integer', 'min:1'],

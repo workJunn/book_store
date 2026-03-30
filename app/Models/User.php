@@ -53,6 +53,16 @@ class User extends Authenticatable implements CanResetPasswordContract
         return $this->belongsTo(Role::class, 'id_role', 'id_role');
     }
 
+    public function authorProfile()
+    {
+        return $this->hasOne(Author::class, 'id_users', 'id_users');
+    }
+
+    public function partnerApplications()
+    {
+        return $this->hasMany(PartnerApplication::class, 'id_users', 'id_users');
+    }
+
     public function isAdmin(): bool
     {
         if ($this->relationLoaded('role')) {
@@ -60,5 +70,14 @@ class User extends Authenticatable implements CanResetPasswordContract
         }
 
         return $this->role()->where('role_name', 'admin')->exists();
+    }
+
+    public function isAuthor(): bool
+    {
+        if ($this->relationLoaded('role')) {
+            return $this->role?->role_name === 'author';
+        }
+
+        return $this->role()->where('role_name', 'author')->exists();
     }
 }

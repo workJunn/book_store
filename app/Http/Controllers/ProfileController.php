@@ -11,8 +11,13 @@ class ProfileController extends Controller
     public function index()
     {
         $user = Auth::user()->load([
+            'role',
+            'authorProfile',
             'orders' => fn ($query) => $query
                 ->orderByDesc('id_orders'),
+            'partnerApplications' => fn ($query) => $query
+                ->latest('created_at')
+                ->limit(1),
         ]);
 
         return view('dashboard', compact('user'));

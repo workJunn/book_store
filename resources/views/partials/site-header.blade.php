@@ -6,6 +6,8 @@
             @if(($showNav ?? true) === true)
                 <nav class="site-nav" aria-label="Основная навигация">
                     <a href="{{ route('catalog') }}">Каталог</a>
+                    <a href="{{ route('payment-methods') }}">Оплата</a>
+                    <a href="{{ route('partner.program') }}">Партнерская программа</a>
                 </nav>
             @endif
         </div>

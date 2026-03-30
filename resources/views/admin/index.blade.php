@@ -38,6 +38,10 @@
                         <div class="info-label">Оплаченные заказы</div>
                         <div class="info-value">{{ $paidOrdersCount }}</div>
                     </div>
+                    <div class="info-box">
+                        <div class="info-label">Партнерские заявки</div>
+                        <div class="info-value">{{ $partnerApplicationsCount }}</div>
+                    </div>
                 </div>
             </section>
 
