@@ -92,7 +92,7 @@ it('creates an order from the cart and decrements stock', function () {
 
     $this->assertDatabaseHas('orders', [
         'id_users' => $user->getKey(),
-        'status' => 'Оформлен',
+        'status' => 'Ожидает оплаты',
         'total_amount' => 1200,
     ]);
 
@@ -105,8 +105,8 @@ it('creates an order from the cart and decrements stock', function () {
         'price_per_item' => 600,
     ]);
 
-    expect($book->fresh()->stock_quantity)->toBe(2);
-    expect((float) $user->fresh()->balance)->toBe(300.0);
+    expect($book->fresh()->stock_quantity)->toBe(4);
+    expect((float) $user->fresh()->balance)->toBe(1500.0);
     expect(session('cart', []))->toBe([]);
 });
 
@@ -132,7 +132,7 @@ it('does not create an order when user balance is insufficient', function () {
     $response->assertStatus(422)
         ->assertJson([
             'error' => true,
-            'message' => 'Недостаточно средств на балансе для оформления заказа.',
+            'message' => 'Недостаточно средств на балансе для оплаты заказа.',
         ]);
 
     $this->assertDatabaseCount('orders', 0);
@@ -172,11 +172,11 @@ it('redirects browser checkout to the payment page with order data', function ()
         ->assertSee('Иван Петров')
         ->assertSee('ivan@example.com')
         ->assertSee('+79991234567')
-        ->assertSee('Оформлен')
+        ->assertSee('Ожидает оплаты')
         ->assertSee('Палата №6')
         ->assertSee('Количество: 2');
 
-    expect((float) $user->fresh()->balance)->toBe(1000.0);
+    expect((float) $user->fresh()->balance)->toBe(2000.0);
 });
 
 it('marks order as paid and shows it in the user profile', function () {
@@ -218,6 +218,7 @@ it('marks order as paid and shows it in the user profile', function () {
     ]);
 
     expect((float) $user->fresh()->balance)->toBe(300.0);
+    expect($book->fresh()->stock_quantity)->toBe(1);
 
     $this->actingAs($user)->withSession([
         'auto_download_book_ids' => [$book->getKey()],
@@ -230,6 +231,81 @@ it('marks order as paid and shows it in the user profile', function () {
         ->assertSee('Количество: 1')
         ->assertSee('Скачать файл книги')
         ->assertSee('data-auto-download', false);
+});
+
+it('redirects guest users to the login page for protected browser routes', function () {
+    $this->get(route('dashboard'))
+        ->assertRedirect(route('login'));
+});
+
+it('does not allow payment when the balance is no longer sufficient', function () {
+    $user = User::factory()->create([
+        'balance' => 800.00,
+    ]);
+
+    $book = createBookForCart([
+        'price' => 700.00,
+        'stock_quantity' => 2,
+    ]);
+
+    $item = $book->toCartItem();
+    $item['quantity'] = 1;
+
+    $this->actingAs($user)->withSession([
+        'cart' => [
+            $book->getKey() => $item,
+        ],
+    ])->post('/cart/checkout');
+
+    $order = \App\Models\Order::query()->firstOrFail();
+
+    $user->forceFill([
+        'balance' => 100.00,
+    ])->save();
+
+    $response = $this->actingAs($user)->post(route('orders.pay', $order));
+
+    $response->assertRedirect(route('orders.payment', $order));
+    $response->assertSessionHas('search_error', 'Недостаточно средств на балансе для оплаты заказа.');
+
+    expect($book->fresh()->stock_quantity)->toBe(2);
+    expect((float) $user->fresh()->balance)->toBe(100.0);
+    expect($order->fresh()->status)->toBe('Ожидает оплаты');
+});
+
+it('shows the verified purchase badge only for paid orders', function () {
+    $buyer = User::factory()->create([
+        'balance' => 1500.00,
+    ]);
+
+    $book = createBookForCart([
+        'price' => 700.00,
+        'stock_quantity' => 2,
+    ]);
+
+    $item = $book->toCartItem();
+    $item['quantity'] = 1;
+
+    $this->actingAs($buyer)->withSession([
+        'cart' => [
+            $book->getKey() => $item,
+        ],
+    ])->post('/cart/checkout');
+
+    $this->actingAs($buyer)->post(route('books.reviews.store', $book), [
+        'rating' => 5,
+        'review_text' => 'Отличная книга.',
+    ]);
+
+    $this->actingAs($buyer)->get(route('books.show', $book))
+        ->assertOk()
+        ->assertDontSee('Подтвержденная покупка');
+
+    $this->actingAs($buyer)->post(route('orders.pay', \App\Models\Order::query()->firstOrFail()));
+
+    $this->actingAs($buyer)->get(route('books.show', $book))
+        ->assertOk()
+        ->assertSee('Подтвержденная покупка');
 });
 
 it('allows a buyer to download a paid digital book and blocks unpaid access', function () {

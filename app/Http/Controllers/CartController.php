@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use RuntimeException;
 use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 
 class CartController extends Controller
@@ -167,20 +168,83 @@ class CartController extends Controller
     {
         abort_unless((int) $order->id_users === (int) Auth::id(), 403);
 
-        if ($order->status !== 'Оплачен') {
-            $order->update([
-                'status' => 'Оплачен',
-            ]);
+        if ($order->status === 'Оплачен') {
+            return redirect()
+                ->route('orders.show', $order)
+                ->with('status', 'Заказ уже оплачен.');
+        }
+
+        if ($order->status !== 'Ожидает оплаты') {
+            abort(422, 'Заказ недоступен для оплаты.');
+        }
+
+        try {
+            $digitalBookIds = DB::transaction(function () use ($order) {
+                $lockedOrder = Order::query()
+                    ->with(['details.book'])
+                    ->lockForUpdate()
+                    ->findOrFail($order->getKey());
+
+                if ($lockedOrder->status === 'Оплачен') {
+                    return $lockedOrder->details
+                        ->filter(fn ($detail) => $detail->book?->digital_file_path)
+                        ->pluck('id_books')
+                        ->map(fn ($id) => (int) $id)
+                        ->all();
+                }
+
+                if ($lockedOrder->status !== 'Ожидает оплаты') {
+                    abort(422, 'Заказ недоступен для оплаты.');
+                }
+
+                $user = $lockedOrder->user()
+                    ->lockForUpdate()
+                    ->firstOrFail();
+
+                if ((float) $user->balance < (float) $lockedOrder->total_amount) {
+                    throw new RuntimeException('Недостаточно средств на балансе для оплаты заказа.');
+                }
+
+                foreach ($lockedOrder->details as $detail) {
+                    $book = Book::query()
+                        ->lockForUpdate()
+                        ->findOrFail($detail->id_books);
+
+                    if ($book->stock_quantity < $detail->quantity) {
+                        throw new RuntimeException("Недостаточно экземпляров книги \"{$book->book_name}\".");
+                    }
+                }
+
+                foreach ($lockedOrder->details as $detail) {
+                    $book = $detail->book;
+
+                    if ($book) {
+                        $book->decrement('stock_quantity', $detail->quantity);
+                    }
+                }
+
+                $user->decrement('balance', $lockedOrder->total_amount);
+
+                $lockedOrder->update([
+                    'status' => 'Оплачен',
+                ]);
+
+                return $lockedOrder->details
+                    ->filter(fn ($detail) => $detail->book?->digital_file_path)
+                    ->pluck('id_books')
+                    ->map(fn ($id) => (int) $id)
+                    ->all();
+            });
+        } catch (RuntimeException $exception) {
+            return redirect()
+                ->route('orders.payment', $order)
+                ->with('search_error', $exception->getMessage());
         }
 
         return redirect()
             ->route('orders.show', $order)
             ->with('status', 'Оплата прошла успешно.')
-            ->with('auto_download_book_ids', $order->details()
-                ->whereHas('book', fn ($query) => $query->whereNotNull('digital_file_path'))
-                ->pluck('id_books')
-                ->map(fn ($id) => (int) $id)
-                ->all());
+            ->with('auto_download_book_ids', $digitalBookIds);
     }
 
     public function download(Order $order, Book $book)
@@ -235,7 +299,7 @@ class CartController extends Controller
         $orderTotal = $this->calculateTotal($cart);
 
         if ((float) $user->balance < $orderTotal) {
-            $message = 'Недостаточно средств на балансе для оформления заказа.';
+            $message = 'Недостаточно средств на балансе для оплаты заказа.';
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -285,10 +349,10 @@ class CartController extends Controller
             }
         }
 
-        $order = DB::transaction(function () use ($cart, $books, $user, $orderTotal) {
+        $order = DB::transaction(function () use ($cart, $books, $orderTotal) {
             $order = Order::create([
                 'id_users' => Auth::id(),
-                'status' => 'Оформлен',
+                'status' => 'Ожидает оплаты',
                 'total_amount' => $orderTotal,
             ]);
 
@@ -300,11 +364,7 @@ class CartController extends Controller
                     'quantity' => $item['quantity'],
                     'price_per_item' => $book->price,
                 ]);
-
-                $book->decrement('stock_quantity', $item['quantity']);
             }
-
-            $user->decrement('balance', $orderTotal);
 
             return $order;
         });

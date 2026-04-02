@@ -154,7 +154,7 @@ it('shows admins first in the admin users list and searches across entities', fu
 
     $order = Order::create([
         'id_users' => $orderUser->getKey(),
-        'status' => 'Оформлен',
+        'status' => 'Ожидает оплаты',
         'total_amount' => 1200,
     ]);
 
@@ -321,7 +321,7 @@ it('shows a compact orders list and opens order details for admin', function () 
 
     $order = Order::create([
         'id_users' => $user->getKey(),
-        'status' => 'Оформлен',
+        'status' => 'Ожидает оплаты',
         'total_amount' => 900,
     ]);
 
@@ -335,5 +335,57 @@ it('shows a compact orders list and opens order details for admin', function () 
         ->assertOk()
         ->assertSee('Заказ №' . $order->getKey())
         ->assertSee($user->name)
-        ->assertSee('Оформлен');
+        ->assertSee('Ожидает оплаты');
+});
+
+it('prevents deleting a book that exists in customer orders', function () {
+    $adminRole = Role::create([
+        'role_name' => 'admin',
+    ]);
+
+    $admin = User::factory()->create([
+        'id_role' => $adminRole->getKey(),
+    ]);
+
+    $author = Author::create([
+        'author_name' => 'Николай Гоголь',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Просвещение',
+    ]);
+
+    $book = Book::create([
+        'book_name' => 'Мертвые души',
+        'price' => 650,
+        'discount_percent' => 10,
+        'stock_quantity' => 7,
+        'publication_date' => '1842-01-01',
+        'number_of_pages' => 320,
+        'description' => 'Поэма в прозе.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $user = User::factory()->create();
+
+    $order = Order::create([
+        'id_users' => $user->getKey(),
+        'status' => 'Оплачен',
+        'total_amount' => 650,
+    ]);
+
+    $order->details()->create([
+        'id_books' => $book->getKey(),
+        'quantity' => 1,
+        'price_per_item' => 650,
+    ]);
+
+    $this->actingAs($admin)->delete(route('admin.books.destroy', $book))
+        ->assertRedirect(route('admin.books.index'))
+        ->assertSessionHas('status', 'Книгу нельзя удалить, пока она присутствует в оформленных или оплаченных заказах.');
+
+    $this->assertDatabaseHas('books', [
+        'id_books' => $book->getKey(),
+    ]);
 });

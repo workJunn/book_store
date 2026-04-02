@@ -22,7 +22,7 @@ return Application::configure(basePath: dirname(__DIR__))
         // $middleware->redirectUsersTo(fn () => route('dashboard'));
 
         $middleware->redirectGuestsTo(function () {
-            return route('User_login');
+            return route('login');
         });
         $middleware->redirectUsersTo(function () {
             return auth()->user()?->isAdmin() ? route('admin.index') : route('dashboard');

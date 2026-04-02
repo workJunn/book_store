@@ -47,6 +47,10 @@
                         <div class="info-value">{{ $order->status }}</div>
                     </div>
                 </div>
+
+                @if(session('search_error'))
+                    <div class="site-search-notice">{{ session('search_error') }}</div>
+                @endif
             </section>
 
             <section class="stack-md">

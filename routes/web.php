@@ -13,7 +13,6 @@ use App\Http\Controllers\AuthorController;
 use App\Http\Controllers\PartnerProgramController;
 
 
-
 Route::get('/', [BookController::class, 'welcome'])->name('home');
 Route::get('/catalog', [BookController::class, 'catalog'])->name('catalog');
 Route::get('/search', [BookController::class, 'search'])->name('books.search');
@@ -124,4 +123,3 @@ Route::get('/admin/orders', [AdminController::class, 'orders'])
 Route::get('/admin/orders/{order}', [AdminController::class, 'showOrder'])
     ->middleware(['auth', 'admin'])
     ->name('admin.orders.show');
-    

@@ -273,10 +273,23 @@ class AdminController extends Controller
 
     public function destroyBook(Book $book)
     {
-        $this->deleteCoverImage($book->cover_image);
-        $this->deleteDigitalBookFile($book->digital_file_path);
-        $book->genres()->detach();
-        $book->delete();
+        if ($book->orderDetails()->exists()) {
+            return redirect()
+                ->route('admin.books.index')
+                ->with('status', 'Книгу нельзя удалить, пока она присутствует в оформленных или оплаченных заказах.');
+        }
+
+        $coverImagePath = $book->cover_image;
+        $digitalFilePath = $book->digital_file_path;
+
+        DB::transaction(function () use ($book) {
+            $book->reviews()->delete();
+            $book->genres()->detach();
+            $book->delete();
+        });
+
+        $this->deleteCoverImage($coverImagePath);
+        $this->deleteDigitalBookFile($digitalFilePath);
 
         return redirect()
             ->route('admin.books.index')

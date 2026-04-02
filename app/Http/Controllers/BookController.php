@@ -449,7 +449,7 @@ class BookController extends Controller
         return DB::table('orders_details')
             ->join('orders', 'orders.id_orders', '=', 'orders_details.id_orders')
             ->where('orders_details.id_books', $book->getKey())
-            ->where('orders.status', 'Оформлен')
+            ->where('orders.status', 'Оплачен')
             ->pluck('orders.id_users')
             ->unique()
             ->values();
