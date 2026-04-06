@@ -103,7 +103,6 @@
                     </div>
 
                     <div class="actions">
-                        <a href="{{ route('payment-methods') }}" class="btn btn-secondary">Способы оплаты</a>
                         <a href="{{ route('partner.program') }}" class="btn btn-secondary">Партнерская программа</a>
                         @if($user->isAuthor())
                             <a href="{{ route('author.index') }}" class="btn btn-secondary">Панель автора</a>

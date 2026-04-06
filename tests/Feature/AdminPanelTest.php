@@ -302,6 +302,52 @@ it('allows admin to upload a cover image for a book', function () {
     Storage::disk('public')->assertExists($book->cover_image);
 });
 
+it('allows admin to remove the preorder flag from a book', function () {
+    $adminRole = Role::create([
+        'role_name' => 'admin',
+    ]);
+
+    $admin = User::factory()->create([
+        'id_role' => $adminRole->getKey(),
+    ]);
+
+    $author = Author::create([
+        'author_name' => 'Николай Гоголь',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Просвещение',
+    ]);
+
+    $book = Book::create([
+        'book_name' => 'Мертвые души',
+        'price' => 650,
+        'discount_percent' => 10,
+        'stock_quantity' => 7,
+        'is_preorder' => true,
+        'publication_date' => '1842-01-01',
+        'number_of_pages' => 320,
+        'description' => 'Поэма в прозе.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $this->actingAs($admin)->put(route('admin.books.update', $book), [
+        'book_name' => 'Мертвые души',
+        'price' => 650,
+        'discount_percent' => 10,
+        'stock_quantity' => 7,
+        'is_preorder' => '0',
+        'publication_date' => '1842-01-01',
+        'number_of_pages' => 320,
+        'description' => 'Поэма в прозе.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ])->assertRedirect(route('admin.books.index'));
+
+    expect($book->fresh()->is_preorder)->toBeFalse();
+});
+
 it('shows a compact orders list and opens order details for admin', function () {
     $adminRole = Role::create([
         'role_name' => 'admin',

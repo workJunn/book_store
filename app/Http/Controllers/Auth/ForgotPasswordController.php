@@ -15,25 +15,16 @@ class ForgotPasswordController extends Controller
 
     public function store(Request $request) 
     {
-        // Валидация
         $request->validate([
-            'email' => ['required', 'email', 'exists:users,email'],
+            'email' => ['required', 'email'],
         ], [
             'email.required' => 'Введите email',
             'email.email' => 'Некорректный формат email',
-            'email.exists' => 'Пользователь с таким email не найден',
         ]);
 
-        // Отправка ссылки
-        $status = Password::sendResetLink($request->only('email'));
+        Password::sendResetLink($request->only('email'));
 
-        if ($status === Password::RESET_LINK_SENT) {
-            return back()->with('status', 'Ссылка для сброса пароля отправлена!');
-        }
-
-        return back()
-            ->withInput($request->only('email'))
-            ->withErrors(['email' => 'Не удалось отправить ссылку. Проверьте email.']);
+        return back()->with('status', 'Если такой email существует, ссылка для сброса уже отправлена.');
     }
 }
  

@@ -153,6 +153,39 @@ it('allows an approved author to manage own books with discount editing', functi
     ]);
 });
 
+it('allows an approved author to create a book without a publisher', function () {
+    $authorRole = Role::create([
+        'role_name' => 'author',
+    ]);
+
+    $user = User::factory()->create([
+        'id_role' => $authorRole->getKey(),
+    ]);
+
+    $author = Author::create([
+        'id_users' => $user->getKey(),
+        'author_name' => 'Анна Автор',
+        'biography' => 'Биография автора.',
+    ]);
+
+    $this->actingAs($user)->post(route('author.books.store'), [
+        'book_name' => 'Книга без издательства',
+        'price' => 750,
+        'discount_percent' => 5,
+        'stock_quantity' => 8,
+        'publication_date' => '2026-03-20',
+        'number_of_pages' => 220,
+        'description' => 'Описание книги.',
+        'id_publishers' => '',
+    ])->assertRedirect(route('author.index'));
+
+    $this->assertDatabaseHas('books', [
+        'book_name' => 'Книга без издательства',
+        'id_author' => $author->getKey(),
+        'id_publishers' => null,
+    ]);
+});
+
 it('allows an approved author to upload a digital book file from the same form', function () {
     Storage::fake('local');
 
@@ -191,6 +224,44 @@ it('allows an approved author to upload a digital book file from the same form',
     expect($book->digital_file_path)->not->toBeNull();
     expect($book->digital_file_original_name)->toBe('book.pdf');
     Storage::disk('local')->assertExists($book->digital_file_path);
+});
+
+it('shows validation errors under the author book form fields', function () {
+    $authorRole = Role::create([
+        'role_name' => 'author',
+    ]);
+
+    $user = User::factory()->create([
+        'id_role' => $authorRole->getKey(),
+    ]);
+
+    Author::create([
+        'id_users' => $user->getKey(),
+        'author_name' => 'Анна Автор',
+        'biography' => 'Биография автора.',
+    ]);
+
+    $response = $this->actingAs($user)
+        ->from(route('author.books.create'))
+        ->post(route('author.books.store'), [
+            'book_name' => '',
+            'price' => -1,
+            'discount_percent' => 120,
+            'stock_quantity' => -3,
+            'publication_date' => 'not-a-date',
+            'number_of_pages' => 0,
+        ]);
+
+    $response->assertRedirect(route('author.books.create'));
+
+    $this->followRedirects($response)
+        ->assertSee('Укажите название книги.')
+        ->assertSee('Цена не может быть отрицательной.')
+        ->assertSee('Скидка должна быть от 0 до 95%.')
+        ->assertSee('Количество не может быть отрицательным.')
+        ->assertSee('Укажите корректную дату публикации.')
+        ->assertSee('Количество страниц должно быть больше нуля.')
+        ->assertSee('form-group error', false);
 });
 
 it('allows an author to remove an uploaded cover from the edit page', function () {
@@ -244,4 +315,51 @@ it('allows an author to remove an uploaded cover from the edit page', function (
 
     expect($book->fresh()->cover_image)->toBeNull();
     Storage::disk('public')->assertMissing($oldCoverPath);
+});
+
+it('allows an author to remove the preorder flag from the edit page', function () {
+    $authorRole = Role::create([
+        'role_name' => 'author',
+    ]);
+
+    $user = User::factory()->create([
+        'id_role' => $authorRole->getKey(),
+    ]);
+
+    $author = Author::create([
+        'id_users' => $user->getKey(),
+        'author_name' => 'Анна Автор',
+        'biography' => 'Биография автора.',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Новая Волна',
+    ]);
+
+    $book = Book::create([
+        'book_name' => 'Новая книга',
+        'price' => 900,
+        'discount_percent' => 15,
+        'stock_quantity' => 12,
+        'is_preorder' => true,
+        'publication_date' => '2026-03-20',
+        'number_of_pages' => 280,
+        'description' => 'Описание книги.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $this->actingAs($user)->put(route('author.books.update', $book), [
+        'book_name' => 'Новая книга',
+        'price' => 990,
+        'discount_percent' => 25,
+        'stock_quantity' => 9,
+        'is_preorder' => '0',
+        'publication_date' => '2026-03-20',
+        'number_of_pages' => 280,
+        'description' => 'Обновленное описание книги.',
+        'id_publishers' => $publisher->getKey(),
+    ])->assertRedirect(route('author.index'));
+
+    expect($book->fresh()->is_preorder)->toBeFalse();
 });

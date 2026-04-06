@@ -14,31 +14,37 @@
         <section class="container stack-lg">
             <section class="catalog-layout">
                 <aside class="stack-md catalog-sidebar">
-                    @if($filters['period'] !== '')
-                        <div class="catalog-filter-section stack-sm">
-                            <div>
-                                <h1 class="section-title">{{ $periodMeta['title'] }}</h1>
-                                <p class="section-text">{{ $periodMeta['description'] }}</p>
-                            </div>
-                        </div>
-                    @endif
-
                     <section class="catalog-filter-section stack-sm">
-                        <h2 class="catalog-filter-title">Категории</h2>
+                        <h2 class="catalog-filter-title">Жанры</h2>
                         <div class="catalog-category-list">
-                            <a
-                                href="{{ route('catalog', array_merge(request()->except(['genre', 'page']), [])) }}"
-                                class="catalog-category-link {{ $filters['genre'] === '' ? 'is-active' : '' }}"
-                            >
-                                Все категории
-                            </a>
-
                             @foreach($genres as $genre)
                                 <a
-                                    href="{{ route('catalog', array_merge(request()->except(['page']), ['genre' => $genre->getKey()])) }}"
-                                    class="catalog-category-link {{ (string) $filters['genre'] === (string) $genre->getKey() ? 'is-active' : '' }}"
+                                    href="{{ route('catalog', array_merge(request()->except(['page', 'period', 'sort', 'genre']), ['genre' => $genre->getKey()])) }}"
+                                    class="catalog-category-link {{ blank($filters['period']) && (string) $filters['genre'] === (string) $genre->getKey() ? 'is-active' : '' }}"
                                 >
                                     {{ $genre->genre_name }}
+                                </a>
+                            @endforeach
+                        </div>
+                    </section>
+
+                    <section class="catalog-filter-section stack-sm">
+                        <h2 class="catalog-filter-title">Рейтинг книг</h2>
+                        <div class="catalog-ranking-list">
+                            @foreach($quickRankings as $ranking)
+                                @php
+                                    $rankingQuery = match ($ranking['period']) {
+                                        'new' => array_merge(request()->except(['page', 'period', 'sort', 'genre']), ['period' => 'new', 'sort' => 'newest']),
+                                        'users' => array_merge(request()->except(['page', 'period', 'sort', 'genre']), ['period' => 'users', 'sort' => 'rating_desc']),
+                                        default => array_merge(request()->except(['page', 'period', 'sort', 'genre']), ['period' => $ranking['period']]),
+                                    };
+                                @endphp
+
+                                <a
+                                    href="{{ route('catalog', $rankingQuery) }}"
+                                    class="catalog-category-link {{ blank($filters['genre']) && $filters['period'] === $ranking['period'] ? 'is-active' : '' }}"
+                                >
+                                    {{ $ranking['title'] }}
                                 </a>
                             @endforeach
                         </div>
@@ -48,15 +54,14 @@
 
                 <div class="stack-md">
                     <section>
-                        <p class="section-text">Найдено книг: {{ $books->count() }}</p>
+                        <p class="section-text">Найдено книг: {{ $foundBooksCount }}</p>
                     </section>
 
                     @if($books->count())
                         <section class="catalog-grid">
-                                @foreach($books as $book)
+                            @foreach($books as $book)
                                     @php
                                         $currentPrice = (float) $book->price;
-                                        $oldPrice = $book->getOriginalPrice();
                                         $discountPercent = $book->getDisplayDiscountPercent();
                                     @endphp
 
@@ -70,10 +75,9 @@
                                     </a>
                                     <div class="card__body">
                                         <div class="price-stack">
-                                            <div class="price">{{ number_format($currentPrice, 0, '.', ' ') }} ₽</div>
                                             <div class="price-meta">
+                                                <span class="price">{{ number_format($currentPrice, 0, '.', ' ') }} ₽</span>
                                                 @if($discountPercent > 0)
-                                                    <span class="price-old">{{ number_format($oldPrice, 0, '.', ' ') }} ₽</span>
                                                     <span class="discount-badge">-{{ $discountPercent }}%</span>
                                                 @endif
                                             </div>
@@ -109,6 +113,12 @@
                                 </article>
                             @endforeach
                         </section>
+
+                        @if($books->hasPages())
+                            <section>
+                                {{ $books->links() }}
+                            </section>
+                        @endif
 
                     @else
                         <section class="empty-state catalog-empty">

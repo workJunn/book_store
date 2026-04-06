@@ -124,13 +124,10 @@
 
             <section class="stack-lg">
                 <div class="reviews-hub" data-reviews-hub>
-                    <div class="reviews-tabs" role="tablist" aria-label="Отзывы и рецензии">
-                        <button class="reviews-tab is-active" type="button" role="tab" id="reviews-tab-users" aria-selected="true" aria-controls="reviews-pane-users" tabindex="0" data-reviews-tab-trigger="users">
+                    <div class="reviews-tabs" aria-label="Отзывы">
+                        <div class="reviews-tab is-active">
                             Отзывы читателей <span class="reviews-tab__count">{{ $reviews->count() }}</span>
-                        </button>
-                        <button class="reviews-tab" type="button" role="tab" id="reviews-tab-external" aria-selected="false" aria-controls="reviews-pane-external" tabindex="-1" data-reviews-tab-trigger="external">
-                            Рецензии с платформы <span class="reviews-tab__count">{{ $externalReviews->count() }}</span>
-                        </button>
+                        </div>
                     </div>
 
                     <div class="reviews-toolbar">
@@ -189,35 +186,6 @@
                                     Пока нет комментариев. Станьте первым читателем, который поделится впечатлением об этой книге.
                                 </div>
                             @endforelse
-                        </div>
-                    </div>
-
-                    <div class="reviews-pane" id="reviews-pane-external" role="tabpanel" aria-labelledby="reviews-tab-external" data-reviews-tab-pane="external" hidden>
-                        <div class="book-reviews-list">
-                            @foreach($externalReviews as $review)
-                                <article class="review-card">
-                                    <div class="review-card__top">
-                                        <div>
-                                            <div class="review-card__author">{{ $review['author'] }}</div>
-                                            <div class="review-card__meta-row">
-                                                <span class="review-card__date">{{ $review['date'] }}</span>
-                                                <span class="review-card__badge review-card__badge--soft">{{ $review['source'] }}</span>
-                                            </div>
-                                        </div>
-
-                                        <div class="review-card__rating">
-                                            @for($star = 1; $star <= 5; $star++)
-                                                <span class="review-card__star {{ $star <= (int) $review['rating'] ? 'is-filled' : '' }}">★</span>
-                                            @endfor
-                                        </div>
-                                    </div>
-
-                                    <div class="review-card__body">{{ $review['text'] }}</div>
-                                    <div class="review-feedback">
-                                        <span class="review-feedback__label">Рецензия собрана из внешнего источника.</span>
-                                    </div>
-                                </article>
-                            @endforeach
                         </div>
                     </div>
                 </div>

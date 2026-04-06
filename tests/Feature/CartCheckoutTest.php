@@ -140,6 +140,46 @@ it('does not create an order when user balance is insufficient', function () {
     expect($book->fresh()->stock_quantity)->toBe(2);
 });
 
+it('creates the order from current database prices instead of stale cart prices', function () {
+    $user = User::factory()->create([
+        'balance' => 1500.00,
+    ]);
+
+    $book = createBookForCart([
+        'price' => 700.00,
+        'stock_quantity' => 2,
+    ]);
+
+    $item = $book->toCartItem();
+    $item['price'] = 500.00;
+    $item['quantity'] = 2;
+
+    $response = $this->actingAs($user)->withSession([
+        'cart' => [
+            $book->getKey() => $item,
+        ],
+    ])->postJson('/cart/checkout');
+
+    $response->assertOk()
+        ->assertJson([
+            'success' => true,
+        ]);
+
+    $order = \App\Models\Order::query()->firstOrFail();
+
+    $this->assertDatabaseHas('orders', [
+        'id_orders' => $order->getKey(),
+        'total_amount' => 1400,
+    ]);
+
+    $this->assertDatabaseHas('orders_details', [
+        'id_orders' => $order->getKey(),
+        'id_books' => $book->getKey(),
+        'price_per_item' => 700,
+        'quantity' => 2,
+    ]);
+});
+
 it('redirects browser checkout to the payment page with order data', function () {
     $user = User::factory()->create([
         'name' => 'Иван Петров',

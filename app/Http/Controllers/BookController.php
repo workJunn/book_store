@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Book;
 use App\Models\Genre;
 use App\Models\Review;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
@@ -16,17 +17,11 @@ class BookController extends Controller
 {
     public function welcome()
     {
-        $books = Book::query()
-            ->with(['author', 'publisher', 'genres'])
-            ->orderByDesc('average_rating')
-            ->orderBy('book_name')
-            ->get();
-
         return view('welcome', [
-            'featuredBooks' => $books->take(4)->values(),
-            'newArrivals' => $this->buildNewArrivals($books),
-            'shelves' => $this->buildShelves($books),
-            'quickRankings' => $this->buildQuickRankings($books),
+            'featuredBooks' => $this->getFeaturedBooks(),
+            'newArrivals' => $this->buildNewArrivals(),
+            'shelves' => $this->buildShelves(),
+            'quickRankings' => $this->buildQuickRankings(),
         ]);
     }
 
@@ -36,28 +31,10 @@ class BookController extends Controller
         $search = trim((string) $request->string('search'));
 
         $periodFilter = $request->string('period')->toString();
+        $isPurchaseTopPeriod = false;
 
         if ($periodFilter !== '') {
-            match ($periodFilter) {
-                'year' => $query->whereBetween('publication_date', [
-                    now()->subYear()->startOfYear()->format('Y-m-d'),
-                    now()->subYear()->endOfYear()->format('Y-m-d'),
-                ]),
-                'month' => $query->whereBetween('publication_date', [
-                    now()->startOfMonth()->format('Y-m-d'),
-                    now()->endOfMonth()->format('Y-m-d'),
-                ]),
-                'week' => $query->whereBetween('publication_date', [
-                    now()->subDays(7)->format('Y-m-d'),
-                    now()->format('Y-m-d'),
-                ]),
-                'new' => $query->whereBetween('publication_date', [
-                    now()->startOfYear()->format('Y-m-d'),
-                    now()->endOfYear()->format('Y-m-d'),
-                ]),
-                'preorder' => $this->applyPreorderFilter($query),
-                default => null,
-            };
+            $isPurchaseTopPeriod = $this->applyPeriodFilter($query, $periodFilter);
         }
 
         if ($request->filled('genre')) {
@@ -79,22 +56,36 @@ class BookController extends Controller
 
         $sort = $request->string('sort')->toString();
 
-        match ($sort) {
-            'price_asc' => $query->orderBy('price'),
-            'price_desc' => $query->orderByDesc('price'),
-            'rating_desc' => $query->orderByDesc('average_rating')->orderBy('book_name'),
-            'newest' => $query->orderByDesc('publication_date')->orderBy('book_name'),
-            default => $query->orderBy('book_name'),
-        };
+        if ($sort === '') {
+            $sort = match ($periodFilter) {
+                'new' => 'newest',
+                'users' => 'rating_desc',
+                default => '',
+            };
+        }
 
-        $books = $query->get();
-        $foundBooksCount = $books->count();
+        if ($isPurchaseTopPeriod) {
+            $query->orderByDesc('purchased_quantity')->orderBy('book_name');
+        } else {
+            match ($sort) {
+                'price_asc' => $query->orderBy('price'),
+                'price_desc' => $query->orderByDesc('price'),
+                'rating_desc' => $query->orderByDesc('average_rating')->orderBy('book_name'),
+                'newest' => $query->orderByDesc('publication_date')->orderBy('book_name'),
+                default => $query->orderBy('book_name'),
+            };
+        }
+
+        $books = $query
+            ->paginate(12)
+            ->withQueryString();
         $genres = Genre::query()->orderBy('genre_name')->get();
 
         return view('catalog', [
             'books' => $books,
-            'foundBooksCount' => $foundBooksCount,
+            'foundBooksCount' => $books->total(),
             'genres' => $genres,
+            'quickRankings' => $this->buildQuickRankings(),
             'periodMeta' => $this->getPeriodMeta($periodFilter),
             'filters' => [
                 'search' => $search,
@@ -155,7 +146,6 @@ class BookController extends Controller
 
         $verifiedBuyerIds = $this->getVerifiedBuyerIds($book);
         $reviews = $this->sortReviews($book->reviews, $reviewSort)->values();
-        $externalReviews = $this->buildExternalReviews($book);
         $userReview = Auth::check()
             ? $reviews->firstWhere('id_users', Auth::id())
             : null;
@@ -164,7 +154,6 @@ class BookController extends Controller
             'book' => $book,
             'userReview' => $userReview,
             'reviews' => $reviews,
-            'externalReviews' => $externalReviews,
             'reviewSort' => $reviewSort,
             'verifiedBuyerIds' => $verifiedBuyerIds,
         ]);
@@ -202,180 +191,169 @@ class BookController extends Controller
             ->with('status', 'Ваш отзыв сохранен.');
     }
 
-    private function buildShelves(Collection $books): Collection
+    private function buildShelves(): Collection
     {
-        $byRating = fn (Collection $items) => $items->sortByDesc(fn (Book $book) => (float) $book->average_rating)->values();
-        $byNewest = fn (Collection $items) => $items->sortByDesc(fn (Book $book) => optional($book->publication_date)->timestamp ?? 0)->values();
-        $byOldest = fn (Collection $items) => $items->sortBy(fn (Book $book) => optional($book->publication_date)->timestamp ?? PHP_INT_MAX)->values();
-
         return collect([
             [
                 'title' => 'Читаем всей семьей',
                 'description' => 'Добрые истории, приключения и книги, которые удобно читать вместе.',
-                'books' => $this->pickShelfBooks(
-                    $books,
-                    fn (Book $book) => $this->bookHasGenres($book, ['дет', 'сказ', 'приключ', 'сем']),
-                    $byRating
-                ),
+                'books' => $this->fetchShelfBooks(function (Builder $query): void {
+                    $query->whereHas('genres', function (Builder $genreQuery): void {
+                        $this->applyGenreKeywordFilter($genreQuery, ['дет', 'сказ', 'приключ', 'сем']);
+                    })
+                        ->orderByDesc('average_rating')
+                        ->orderBy('book_name');
+                }),
             ],
             [
                 'title' => 'Книги для школы',
                 'description' => 'Романы, рассказы и тексты, которые часто встречаются в школьных списках.',
-                'books' => $this->pickShelfBooks(
-                    $books,
-                    fn (Book $book) => $this->bookHasGenres($book, ['роман', 'поэз', 'драм', 'истор'])
-                        || (optional($book->publication_date)->year ?? 9999) < 2005,
-                    $byRating
-                ),
+                'books' => $this->fetchShelfBooks(function (Builder $query): void {
+                    $query->where(function (Builder $nestedQuery): void {
+                        $nestedQuery->whereHas('genres', function (Builder $genreQuery): void {
+                            $this->applyGenreKeywordFilter($genreQuery, ['роман', 'поэз', 'драм', 'истор']);
+                        })
+                            ->orWhereDate('publication_date', '<', '2005-01-01');
+                    })
+                        ->orderByDesc('average_rating')
+                        ->orderBy('book_name');
+                }),
             ],
             [
                 'title' => 'Классика',
                 'description' => 'Проверенные временем книги с высокой оценкой читателей.',
-                'books' => $this->pickShelfBooks(
-                    $books,
-                    fn (Book $book) => (optional($book->publication_date)->year ?? 9999) < 1990
-                        || (float) $book->average_rating >= 4.5,
-                    $byOldest
-                ),
+                'books' => $this->fetchShelfBooks(function (Builder $query): void {
+                    $query->where(function (Builder $nestedQuery): void {
+                        $nestedQuery->whereDate('publication_date', '<', '1990-01-01')
+                            ->orWhere('average_rating', '>=', 4.5);
+                    })
+                        ->orderBy('publication_date')
+                        ->orderBy('book_name');
+                }),
             ],
             [
                 'title' => 'Новые открытия',
                 'description' => 'Более свежие книги, которые стоит посмотреть после классики.',
-                'books' => $this->pickShelfBooks(
-                    $books,
-                    fn (Book $book) => (optional($book->publication_date)->year ?? 0) >= 2005,
-                    $byNewest
-                ),
+                'books' => $this->fetchShelfBooks(function (Builder $query): void {
+                    $query->whereDate('publication_date', '>=', '2005-01-01')
+                        ->orderByDesc('publication_date')
+                        ->orderBy('book_name');
+                }, function (Builder $query): void {
+                    $query->orderByDesc('publication_date')
+                        ->orderBy('book_name');
+                }),
             ],
-        ])->map(function (array $shelf) {
-            $shelf['books'] = $shelf['books']->take(10)->values();
-
-            return $shelf;
-        })->filter(fn (array $shelf) => $shelf['books']->isNotEmpty())->values();
+        ])->filter(fn (array $shelf) => $shelf['books']->isNotEmpty())->values();
     }
 
-    private function pickShelfBooks(Collection $books, callable $predicate, callable $sorter): Collection
+    private function buildNewArrivals(): Collection
     {
-        $selected = $sorter($books->filter($predicate));
-
-        if ($selected->isNotEmpty()) {
-            return $selected;
-        }
-
-        return $sorter($books);
+        return $this->baseBookQuery()
+            ->whereBetween('publication_date', [
+                now()->subWeek()->toDateString(),
+                now()->toDateString(),
+            ])
+            ->orderByDesc('publication_date')
+            ->orderBy('book_name')
+            ->limit(10)
+            ->get();
     }
 
-    private function bookHasGenres(Book $book, array $needles): bool
-    {
-        $genreNames = $book->genres
-            ->pluck('genre_name')
-            ->map(fn (string $name) => mb_strtolower($name))
-            ->implode(' ');
-
-        foreach ($needles as $needle) {
-            if (str_contains($genreNames, $needle)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    private function buildNewArrivals(Collection $books): Collection
-    {
-        $currentYearArrivals = $books
-            ->filter(fn (Book $book) => optional($book->publication_date)?->between(
-                now()->startOfYear(),
-                now()->endOfYear()
-            ))
-            ->sortByDesc(fn (Book $book) => optional($book->publication_date)->timestamp ?? 0)
-            ->values();
-
-        if ($currentYearArrivals->isNotEmpty()) {
-            return $currentYearArrivals->take(10)->values();
-        }
-
-        return $books
-            ->sortByDesc(fn (Book $book) => optional($book->publication_date)->timestamp ?? 0)
-            ->take(10)
-            ->values();
-    }
-
-    private function buildQuickRankings(Collection $books): Collection
+    private function buildQuickRankings(): Collection
     {
         return collect([
             [
                 'period' => 'year',
                 'title' => 'Топ года',
                 'description' => 'Топ 10 книг',
-                'books' => $this->topBooksForPeriod($books, 'year'),
             ],
             [
                 'period' => 'month',
                 'title' => 'Топ месяца',
                 'description' => 'Топ 10 книг',
-                'books' => $this->topBooksForPeriod($books, 'month'),
             ],
             [
                 'period' => 'week',
                 'title' => 'Топ недели',
                 'description' => 'Топ 10 книг',
-                'books' => $this->topBooksForPeriod($books, 'week'),
             ],
             [
                 'period' => 'new',
                 'title' => 'Новинки',
                 'description' => 'Топ 10 книг',
-                'books' => $this->topBooksForPeriod($books, 'new'),
             ],
             [
                 'period' => 'users',
                 'title' => 'Рейтинг',
                 'description' => 'Топ 10 книг',
-                'books' => $this->topBooksForPeriod($books, 'users'),
             ],
-        ])->map(function (array $ranking) use ($books) {
-            if ($ranking['books']->isEmpty()) {
-                $ranking['books'] = $books
-                    ->sortByDesc(fn (Book $book) => (float) $book->average_rating)
-                    ->take(10)
-                    ->values();
-            }
-
-            return $ranking;
-        });
+        ]);
     }
 
-    private function topBooksForPeriod(Collection $books, string $period): Collection
+    private function applyPeriodFilter(Builder $query, string $periodFilter): bool
     {
-        $filtered = match ($period) {
-            'year' => $books->filter(fn (Book $book) => optional($book->publication_date)?->between(
-                now()->subYear()->startOfYear(),
-                now()->subYear()->endOfYear()
-            )),
-            'month' => $books->filter(fn (Book $book) => optional($book->publication_date)?->between(
-                now()->startOfMonth(),
-                now()->endOfMonth()
-            )),
-            'week' => $books->filter(fn (Book $book) => optional($book->publication_date)?->between(
-                now()->subDays(7)->startOfDay(),
-                now()->endOfDay()
-            )),
-            'new' => $books->filter(fn (Book $book) => optional($book->publication_date)?->between(
-                now()->startOfYear(),
-                now()->endOfYear()
-            )),
-            'preorder' => $this->hasPreorderColumn()
-                ? $books->filter(fn (Book $book) => (bool) $book->is_preorder)
-                : collect(),
-            'users' => $books,
-            default => collect(),
+        if (in_array($periodFilter, ['year', 'month', 'week'], true)) {
+            $this->applyPurchaseTopFilter($query, $periodFilter);
+
+            return true;
+        }
+
+        match ($periodFilter) {
+            'new' => $query->whereBetween('publication_date', [
+                now()->subWeek()->toDateString(),
+                now()->toDateString(),
+            ]),
+            'preorder' => $this->applyPreorderFilter($query),
+            default => null,
         };
 
-        return $filtered
-            ->sortByDesc(fn (Book $book) => [(float) $book->average_rating, optional($book->publication_date)->timestamp ?? 0])
-            ->take(10)
-            ->values();
+        return false;
+    }
+
+    private function baseBookQuery(): Builder
+    {
+        return Book::query()->with(['author', 'publisher', 'genres']);
+    }
+
+    private function getFeaturedBooks(): Collection
+    {
+        return $this->baseBookQuery()
+            ->orderByDesc('average_rating')
+            ->orderBy('book_name')
+            ->limit(2)
+            ->get();
+    }
+
+    private function fetchShelfBooks(callable $constraint, ?callable $fallbackOrder = null, int $limit = 10): Collection
+    {
+        $query = $this->baseBookQuery();
+        $constraint($query);
+        $books = $query->limit($limit)->get();
+
+        if ($books->isNotEmpty()) {
+            return $books;
+        }
+
+        $fallbackQuery = $this->baseBookQuery();
+        ($fallbackOrder ?? fn (Builder $builder) => $this->applyDefaultShelfFallback($builder))($fallbackQuery);
+
+        return $fallbackQuery->limit($limit)->get();
+    }
+
+    private function applyDefaultShelfFallback(Builder $query): void
+    {
+        $query->orderByDesc('average_rating')
+            ->orderBy('book_name');
+    }
+
+    private function applyGenreKeywordFilter(Builder $query, array $keywords): void
+    {
+        $query->where(function (Builder $nestedQuery) use ($keywords): void {
+            foreach ($keywords as $index => $keyword) {
+                $method = $index === 0 ? 'whereRaw' : 'orWhereRaw';
+                $nestedQuery->{$method}('LOWER(genre_name) LIKE ?', ['%' . mb_strtolower($keyword) . '%']);
+            }
+        });
     }
 
     private function getPeriodMeta(string $periodFilter): array
@@ -395,7 +373,7 @@ class BookController extends Controller
             ],
             'new' => [
                 'title' => 'Новинки сайта',
-                'description' => 'Все новинки текущего года.',
+                'description' => 'Книги, выпущенные за последнюю неделю.',
             ],
             'preorder' => [
                 'title' => 'Предзаказы книг',
@@ -409,6 +387,38 @@ class BookController extends Controller
                 'title' => 'Каталог книг',
                 'description' => 'Все книги магазина с фильтрами и сортировкой.',
             ],
+        };
+    }
+
+    private function applyPurchaseTopFilter(Builder $query, string $periodFilter): void
+    {
+        [$startDate, $endDate] = $this->resolvePurchaseTopRange($periodFilter);
+
+        $purchaseStats = DB::table('orders_details')
+            ->join('orders', 'orders.id_orders', '=', 'orders_details.id_orders')
+            ->select('orders_details.id_books')
+            ->selectRaw('SUM(orders_details.quantity) as purchased_quantity')
+            ->where('orders.status', 'Оплачен')
+            ->whereBetween('orders.order_date', [$startDate, $endDate])
+            ->groupBy('orders_details.id_books');
+
+        $query
+            ->joinSub($purchaseStats, 'purchase_stats', function ($join) {
+                $join->on('purchase_stats.id_books', '=', 'books.id_books');
+            })
+            ->select('books.*')
+            ->selectRaw('purchase_stats.purchased_quantity as purchased_quantity');
+    }
+
+    private function resolvePurchaseTopRange(string $periodFilter): array
+    {
+        $endDate = now();
+
+        return match ($periodFilter) {
+            'year' => [$endDate->copy()->subYear(), $endDate],
+            'month' => [$endDate->copy()->subMonth(), $endDate],
+            'week' => [$endDate->copy()->subWeek(), $endDate],
+            default => [$endDate->copy()->subWeek(), $endDate],
         };
     }
 
@@ -455,26 +465,4 @@ class BookController extends Controller
             ->values();
     }
 
-    private function buildExternalReviews(Book $book): Collection
-    {
-        $authorName = $book->author->author_name ?? 'автора';
-        $year = optional($book->publication_date)->format('Y') ?? 'неизвестного периода';
-
-        return collect([
-            [
-                'source' => 'ReadRate',
-                'author' => 'Редакция ReadRate',
-                'date' => '12.02.2026',
-                'rating' => 5,
-                'text' => "Книга {$book->book_name} выделяется выразительным авторским стилем {$authorName} и хорошо работает как рекомендация для читателей, которым нужны сильные эмоции и насыщенный сюжет.",
-            ],
-            [
-                'source' => 'BookMix',
-                'author' => 'Обзор BookMix',
-                'date' => '27.01.2026',
-                'rating' => 4,
-                'text' => "Издание {$year} года публикации в карточке выглядит как удачный выбор для домашней библиотеки: книга держит внимание, а описание и жанровая принадлежность хорошо совпадают с ожиданиями аудитории интернет-магазина.",
-            ],
-        ]);
-    }
 }

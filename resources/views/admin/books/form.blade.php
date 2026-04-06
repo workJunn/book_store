@@ -109,6 +109,7 @@
                     </div>
 
                     <label class="checkbox-row">
+                        <input type="hidden" name="is_preorder" value="0">
                         <input type="checkbox" name="is_preorder" value="1" @checked((bool) old('is_preorder', $book->is_preorder))>
                         <span>Предзаказ</span>
                     </label>

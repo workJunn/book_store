@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Book;
 use App\Models\Order;
+use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -281,7 +282,6 @@ class CartController extends Controller
         }
 
         $cart = session()->get('cart', []);
-        $user = Auth::user();
 
         if ($cart === []) {
             if ($request->expectsJson()) {
@@ -296,78 +296,70 @@ class CartController extends Controller
                 ->with('search_error', 'Корзина пуста.');
         }
 
-        $orderTotal = $this->calculateTotal($cart);
+        try {
+            $order = DB::transaction(function () use ($cart) {
+                $bookIds = array_map('intval', array_keys($cart));
+                $books = Book::query()
+                    ->lockForUpdate()
+                    ->whereIn('id_books', $bookIds)
+                    ->get()
+                    ->keyBy('id_books');
 
-        if ((float) $user->balance < $orderTotal) {
-            $message = 'Недостаточно средств на балансе для оплаты заказа.';
+                $orderTotal = 0.0;
 
+                foreach ($cart as $bookId => $item) {
+                    $book = $books->get((int) $bookId);
+
+                    if (! $book) {
+                        throw new RuntimeException('Одна из книг больше недоступна.');
+                    }
+
+                    if ($item['quantity'] > $book->stock_quantity) {
+                        throw new RuntimeException("Недостаточно экземпляров книги \"{$book->book_name}\".");
+                    }
+
+                    $orderTotal += round((float) $book->price * (int) $item['quantity'], 2);
+                }
+
+                $orderTotal = round($orderTotal, 2);
+                $user = User::query()
+                    ->lockForUpdate()
+                    ->findOrFail(Auth::id());
+
+                if ((float) $user->balance < $orderTotal) {
+                    throw new RuntimeException('Недостаточно средств на балансе для оплаты заказа.');
+                }
+
+                $order = Order::create([
+                    'id_users' => $user->getKey(),
+                    'status' => 'Ожидает оплаты',
+                    'total_amount' => $orderTotal,
+                ]);
+
+                foreach ($cart as $bookId => $item) {
+                    $book = $books->get((int) $bookId);
+
+                    $order->details()->create([
+                        'id_books' => $book->getKey(),
+                        'quantity' => $item['quantity'],
+                        'price_per_item' => $book->price,
+                    ]);
+                }
+
+                return $order;
+            });
+        } catch (RuntimeException $exception) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'error' => true,
-                    'message' => $message,
+                    'message' => $exception->getMessage(),
                 ], 422);
             }
 
             return redirect()
                 ->route('cart.index')
-                ->with('search_error', $message);
+                ->with('search_error', $exception->getMessage());
         }
-
-        $bookIds = array_map('intval', array_keys($cart));
-        $books = Book::query()
-            ->whereIn('id_books', $bookIds)
-            ->get()
-            ->keyBy('id_books');
-
-        foreach ($cart as $bookId => $item) {
-            $book = $books->get((int) $bookId);
-
-            if (! $book) {
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'error' => true,
-                        'message' => 'Одна из книг больше недоступна.',
-                    ], 422);
-                }
-
-                return redirect()
-                    ->route('cart.index')
-                    ->with('search_error', 'Одна из книг больше недоступна.');
-            }
-
-            if ($item['quantity'] > $book->stock_quantity) {
-                if ($request->expectsJson()) {
-                    return response()->json([
-                        'error' => true,
-                        'message' => "Недостаточно экземпляров книги \"{$book->book_name}\".",
-                    ], 422);
-                }
-
-                return redirect()
-                    ->route('cart.index')
-                    ->with('search_error', "Недостаточно экземпляров книги \"{$book->book_name}\".");
-            }
-        }
-
-        $order = DB::transaction(function () use ($cart, $books, $orderTotal) {
-            $order = Order::create([
-                'id_users' => Auth::id(),
-                'status' => 'Ожидает оплаты',
-                'total_amount' => $orderTotal,
-            ]);
-
-            foreach ($cart as $bookId => $item) {
-                $book = $books->get((int) $bookId);
-
-                $order->details()->create([
-                    'id_books' => $book->getKey(),
-                    'quantity' => $item['quantity'],
-                    'price_per_item' => $book->price,
-                ]);
-            }
-
-            return $order;
-        });
 
         session()->forget('cart');
 

@@ -38,6 +38,7 @@ class AuthorController extends Controller
     {
         $author = Auth::user()->authorProfile()->firstOrFail();
         $validated = $this->validateBook($request);
+        $validated['is_preorder'] = $request->boolean('is_preorder');
         $validated['id_author'] = $author->getKey();
         $validated['cover_image'] = $this->storeCoverImage($request);
         [$validated['digital_file_path'], $validated['digital_file_original_name']] = $this->storeDigitalBookFile($request);
@@ -73,6 +74,7 @@ class AuthorController extends Controller
         abort_unless((int) $book->id_author === (int) $author->getKey(), 403);
 
         $validated = $this->validateBook($request);
+        $validated['is_preorder'] = $request->boolean('is_preorder');
         $validated['id_author'] = $author->getKey();
         $validated['cover_image'] = $this->resolveCoverImagePath($request, $book);
         [$validated['digital_file_path'], $validated['digital_file_original_name']] = $this->resolveDigitalBookFile($request, $book);
@@ -87,7 +89,7 @@ class AuthorController extends Controller
 
     private function validateBook(Request $request): array
     {
-        return $request->validate([
+        $validated = $request->validate([
             'book_name' => ['required', 'string', 'max:200'],
             'cover' => ['nullable', 'image', 'max:5120'],
             'remove_cover_image' => ['nullable', 'boolean'],
@@ -103,7 +105,34 @@ class AuthorController extends Controller
             'is_preorder' => ['nullable', 'boolean'],
             'genre_ids' => ['nullable', 'array'],
             'genre_ids.*' => ['exists:genres,id_genre'],
+        ], [
+            'book_name.required' => 'Укажите название книги.',
+            'book_name.max' => 'Название книги не должно превышать 200 символов.',
+            'cover.image' => 'Обложка должна быть изображением.',
+            'cover.max' => 'Размер обложки не должен превышать 5 МБ.',
+            'book_file.mimes' => 'Файл книги должен быть в формате PDF, EPUB, FB2 или TXT.',
+            'book_file.max' => 'Размер файла книги не должен превышать 50 МБ.',
+            'price.required' => 'Укажите цену книги.',
+            'price.numeric' => 'Цена должна быть числом.',
+            'price.min' => 'Цена не может быть отрицательной.',
+            'discount_percent.required' => 'Укажите размер скидки.',
+            'discount_percent.integer' => 'Скидка должна быть целым числом.',
+            'discount_percent.between' => 'Скидка должна быть от 0 до 95%.',
+            'stock_quantity.required' => 'Укажите количество книг.',
+            'stock_quantity.integer' => 'Количество должно быть целым числом.',
+            'stock_quantity.min' => 'Количество не может быть отрицательным.',
+            'publication_date.date' => 'Укажите корректную дату публикации.',
+            'number_of_pages.required' => 'Укажите количество страниц.',
+            'number_of_pages.integer' => 'Количество страниц должно быть целым числом.',
+            'number_of_pages.min' => 'Количество страниц должно быть больше нуля.',
+            'id_publishers.exists' => 'Выбранное издательство не найдено.',
+            'genre_ids.array' => 'Жанры должны быть переданы списком.',
+            'genre_ids.*.exists' => 'Один из выбранных жанров не найден.',
         ]);
+
+        $validated['id_publishers'] = $validated['id_publishers'] ?? null;
+
+        return $validated;
     }
 
     private function storeCoverImage(Request $request): ?string

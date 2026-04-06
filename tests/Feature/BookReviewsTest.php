@@ -47,7 +47,6 @@ it('shows detailed book page with extended information', function () {
         ->assertSee('О книге')
         ->assertSee('Об авторе')
         ->assertSee('Отзывы читателей')
-        ->assertSee('Рецензии с платформы')
         ->assertDontSee('Статус')
         ->assertDontSee('Ориентир по чтению');
 });

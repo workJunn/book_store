@@ -3,7 +3,9 @@
 use App\Models\Author;
 use App\Models\Book;
 use App\Models\Genre;
+use App\Models\Order;
 use App\Models\Publisher;
+use App\Models\User;
 use Illuminate\Support\Carbon;
 
 it('filters catalog by genre', function () {
@@ -140,19 +142,237 @@ it('shows quick rankings on the welcome page and links them to catalog periods',
     $response->assertSee('Топ недели');
     $response->assertSee('Новинки');
     $response->assertSee('Рейтинг');
-    $response->assertSee('Топ 10 книг');
     $response->assertSee('1984');
     $response->assertSee('Скотный двор');
 
     Carbon::setTestNow();
 });
 
-it('shows a readable period title in catalog for quick ranking pages', function () {
+it('builds weekly top books in catalog based on paid purchases and hides the old period text block', function () {
+    Carbon::setTestNow('2026-03-23 12:00:00');
+
+    $author = Author::create([
+        'author_name' => 'Рэй Брэдбери',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Эксмо',
+    ]);
+
+    $firstBook = Book::create([
+        'book_name' => '451 градус по Фаренгейту',
+        'price' => 700.00,
+        'stock_quantity' => 10,
+        'publication_date' => '1953-01-01',
+        'number_of_pages' => 256,
+        'average_rating' => 4.7,
+        'description' => 'Антиутопия.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $secondBook = Book::create([
+        'book_name' => 'Марсианские хроники',
+        'price' => 680.00,
+        'stock_quantity' => 10,
+        'publication_date' => '1950-01-01',
+        'number_of_pages' => 320,
+        'average_rating' => 4.6,
+        'description' => 'Фантастика.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $thirdBook = Book::create([
+        'book_name' => 'Вино из одуванчиков',
+        'price' => 650.00,
+        'stock_quantity' => 10,
+        'publication_date' => '1957-01-01',
+        'number_of_pages' => 280,
+        'average_rating' => 4.8,
+        'description' => 'Роман.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $user = User::factory()->create();
+
+    $weeklyTopOrder = Order::create([
+        'id_users' => $user->getKey(),
+        'order_date' => now()->subDays(2),
+        'status' => 'Оплачен',
+        'total_amount' => 2780,
+    ]);
+
+    $weeklyTopOrder->details()->create([
+        'id_books' => $secondBook->getKey(),
+        'quantity' => 3,
+        'price_per_item' => 680,
+    ]);
+
+    $weeklyTopOrder->details()->create([
+        'id_books' => $firstBook->getKey(),
+        'quantity' => 1,
+        'price_per_item' => 700,
+    ]);
+
+    $oldOrder = Order::create([
+        'id_users' => $user->getKey(),
+        'order_date' => now()->subDays(20),
+        'status' => 'Оплачен',
+        'total_amount' => 2600,
+    ]);
+
+    $oldOrder->details()->create([
+        'id_books' => $thirdBook->getKey(),
+        'quantity' => 4,
+        'price_per_item' => 650,
+    ]);
+
+    $response = $this->get('/catalog?period=week');
+
+    $response->assertOk();
+    $response->assertSeeInOrder([
+        'Марсианские хроники',
+        '451 градус по Фаренгейту',
+    ]);
+    $response->assertDontSee('Вино из одуванчиков');
+    $response->assertDontSee('Лучшие книги за год');
+    $response->assertDontSee('Подборка книг за прошлый календарный год.');
+
+    Carbon::setTestNow();
+});
+
+it('shows new books in the rating section sorted by newest first', function () {
+    Carbon::setTestNow('2026-03-23 12:00:00');
+
+    $author = Author::create([
+        'author_name' => 'Аркадий Стругацкий',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'АСТ',
+    ]);
+
+    Book::create([
+        'book_name' => 'Книга старше',
+        'price' => 500.00,
+        'stock_quantity' => 5,
+        'publication_date' => '2026-03-18',
+        'number_of_pages' => 240,
+        'average_rating' => 4.2,
+        'description' => 'Первая книга.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    Book::create([
+        'book_name' => 'Книга новее',
+        'price' => 600.00,
+        'stock_quantity' => 5,
+        'publication_date' => '2026-03-20',
+        'number_of_pages' => 280,
+        'average_rating' => 4.1,
+        'description' => 'Вторая книга.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $response = $this->get('/catalog?period=new');
+
+    $response->assertOk();
+    $response->assertSeeInOrder([
+        'Книга новее',
+        'Книга старше',
+    ]);
+
+    Carbon::setTestNow();
+});
+
+it('shows only books released during the last week in the new section', function () {
+    Carbon::setTestNow('2026-03-23 12:00:00');
+
+    $author = Author::create([
+        'author_name' => 'Айзек Азимов',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Азбука',
+    ]);
+
+    Book::create([
+        'book_name' => 'Книга за пределами недели',
+        'price' => 500.00,
+        'stock_quantity' => 5,
+        'publication_date' => '2026-03-10',
+        'number_of_pages' => 240,
+        'average_rating' => 4.2,
+        'description' => 'Первая книга.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    Book::create([
+        'book_name' => 'Книга за неделю',
+        'price' => 600.00,
+        'stock_quantity' => 5,
+        'publication_date' => '2026-03-19',
+        'number_of_pages' => 280,
+        'average_rating' => 4.1,
+        'description' => 'Вторая книга.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $response = $this->get('/catalog?period=new');
+
+    $response->assertOk();
+    $response->assertSee('Книга за неделю');
+    $response->assertDontSee('Книга за пределами недели');
+
+    Carbon::setTestNow();
+});
+
+it('shows rating books sorted from higher rating to lower', function () {
+    $author = Author::create([
+        'author_name' => 'Стивен Кинг',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Эксмо',
+    ]);
+
+    Book::create([
+        'book_name' => 'Книга с низким рейтингом',
+        'price' => 500.00,
+        'stock_quantity' => 5,
+        'publication_date' => '2020-01-01',
+        'number_of_pages' => 240,
+        'average_rating' => 3.8,
+        'description' => 'Первая книга.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    Book::create([
+        'book_name' => 'Книга с высоким рейтингом',
+        'price' => 600.00,
+        'stock_quantity' => 5,
+        'publication_date' => '2020-02-01',
+        'number_of_pages' => 280,
+        'average_rating' => 4.9,
+        'description' => 'Вторая книга.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
     $response = $this->get('/catalog?period=users');
 
     $response->assertOk();
-    $response->assertSee('Рейтинг');
-    $response->assertSee('Рейтинг книг на основе оценок пользователей.');
+    $response->assertSeeInOrder([
+        'Книга с высоким рейтингом',
+        'Книга с низким рейтингом',
+    ]);
 });
 
 it('redirects header search to the matching book page', function () {

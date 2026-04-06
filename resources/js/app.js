@@ -140,13 +140,7 @@ function renderFavoritesPage() {
     const favorites = readFavorites();
 
     if (!favorites.length) {
-        favoritesContent.innerHTML = `
-            <div class="favorites-empty">
-                <h2>В избранном пока пусто</h2>
-                <p>Нажмите на значок закладки у книги, и она появится на этой странице.</p>
-                <a href="${getHomeUrl()}" class="btn btn-primary">Перейти в каталог</a>
-            </div>
-        `;
+        favoritesContent.innerHTML = '';
         return;
     }
 
@@ -264,7 +258,7 @@ async function addToCart(bookId) {
     }
 }
 
-function renderEmptyCart(message = 'Добавьте книги из каталога') {
+function renderEmptyCart() {
     const cartContent = document.getElementById('cart-content');
     const topButtons = document.getElementById('top-buttons');
 
@@ -274,13 +268,7 @@ function renderEmptyCart(message = 'Добавьте книги из катал�
         return;
     }
 
-    cartContent.innerHTML = `
-        <div class="empty-cart">
-            <h2>Корзина пуста</h2>
-            <p>${message}</p>
-            <a href="${getHomeUrl()}" class="btn btn-primary">Перейти в каталог</a>
-        </div>
-    `;
+    cartContent.innerHTML = '';
 }
 
 function openCheckoutModal() {
@@ -491,6 +479,7 @@ function initBookShelves() {
     document.querySelectorAll('[data-book-shelf]').forEach((shelf) => {
         const track = shelf.querySelector('[data-shelf-track]');
         const viewport = shelf.querySelector('[data-shelf-viewport]');
+        const controls = Array.from(shelf.querySelectorAll('[data-shelf-direction]'));
 
         if (!track || !viewport || !track.children.length) {
             return;
@@ -503,16 +492,28 @@ function initBookShelves() {
         let touchCurrentX = null;
         let hasRendered = false;
 
+        const getVisibleCount = () => Math.min(pageSize, cards.length);
+        const canPaginate = () => cards.length > pageSize;
+
+        const syncControls = () => {
+            controls.forEach((button) => {
+                button.disabled = !canPaginate();
+                button.hidden = !canPaginate();
+            });
+        };
+
         const renderPage = (withAnimation = true) => {
             const visibleCards = [];
+            const visibleCount = getVisibleCount();
 
-            for (let index = 0; index < pageSize; index += 1) {
+            for (let index = 0; index < visibleCount; index += 1) {
                 const cardIndex = (startIndex + index) % cards.length;
                 visibleCards.push(cards[cardIndex]);
             }
 
             track.innerHTML = visibleCards.join('');
             track.style.setProperty('--shelf-columns', String(pageSize));
+            syncControls();
             if (withAnimation && hasRendered) {
                 track.classList.remove('is-animating');
                 // Force reflow so the animation can restart on repeated renders.
@@ -538,8 +539,12 @@ function initBookShelves() {
         renderPage(false);
         window.addEventListener('resize', syncPageSize);
 
-        shelf.querySelectorAll('[data-shelf-direction]').forEach((button) => {
+        controls.forEach((button) => {
             button.addEventListener('click', () => {
+                if (!canPaginate()) {
+                    return;
+                }
+
                 const direction = button.dataset.shelfDirection === 'next' ? 1 : -1;
                 startIndex = (startIndex + direction + cards.length * 10) % cards.length;
                 renderPage();
@@ -564,7 +569,7 @@ function initBookShelves() {
 
             const deltaX = touchCurrentX - touchStartX;
 
-            if (Math.abs(deltaX) >= 40) {
+            if (canPaginate() && Math.abs(deltaX) >= 40) {
                 const direction = deltaX < 0 ? 1 : -1;
                 startIndex = (startIndex + direction + cards.length * 10) % cards.length;
                 renderPage();

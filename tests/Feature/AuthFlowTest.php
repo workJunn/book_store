@@ -73,9 +73,21 @@ it('sends a password reset notification', function () {
         'email' => $user->email,
     ]);
 
-    $response->assertSessionHas('status');
+    $response->assertSessionHas('status', 'Если такой email существует, ссылка для сброса уже отправлена.');
 
     Notification::assertSentTo($user, ResetPassword::class);
+});
+
+it('returns the same password reset response for an unknown email', function () {
+    Notification::fake();
+
+    $response = $this->post('/forgot-password', [
+        'email' => 'missing@example.com',
+    ]);
+
+    $response->assertSessionHas('status', 'Если такой email существует, ссылка для сброса уже отправлена.');
+
+    Notification::assertNothingSent();
 });
 
 it('shows the reset password form and updates the password', function () {

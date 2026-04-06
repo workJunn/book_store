@@ -63,7 +63,7 @@
                     @foreach($orderDetails as $detail)
                         <article class="cart-item">
                             <img
-                                src="{{ $detail->book?->cover_image_url ?? 'https://via.placeholder.com/500x700/667eea/ffffff?text=' . urlencode($detail->book->book_name ?? 'Книга') }}"
+                                src="{{ $detail->book?->cover_image_url ?? \App\Models\Book::placeholderImageUrlFor($detail->book->book_name ?? 'Книга') }}"
                                 class="cart-image"
                                 alt="{{ $detail->book->book_name ?? 'Книга' }}"
                             >

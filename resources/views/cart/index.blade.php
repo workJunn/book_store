@@ -66,11 +66,7 @@
                             </form>
                         </div>
                     @else
-                        <div class="empty-cart">
-                            <h2>Корзина пуста</h2>
-                            <p>Добавьте книги из каталога.</p>
-                            <a href="{{ route('catalog') }}" class="btn btn-primary">Перейти в каталог</a>
-                        </div>
+                        
                     @endif
                 </div>
             </section>

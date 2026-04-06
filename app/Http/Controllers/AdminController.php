@@ -230,6 +230,7 @@ class AdminController extends Controller
     public function storeBook(Request $request)
     {
         $validated = $this->validateBook($request);
+        $validated['is_preorder'] = $request->boolean('is_preorder');
         $validated['cover_image'] = $this->storeCoverImage($request);
 
         $book = Book::create($validated);
@@ -261,6 +262,7 @@ class AdminController extends Controller
     public function updateBook(Request $request, Book $book)
     {
         $validated = $this->validateBook($request);
+        $validated['is_preorder'] = $request->boolean('is_preorder');
         $validated['cover_image'] = $this->resolveCoverImagePath($request, $book);
 
         $book->update($validated);

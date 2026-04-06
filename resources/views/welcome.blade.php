@@ -15,10 +15,11 @@
             <section class="hero-simple">
                 <div class="stack-md">
                     <p class="eyebrow">Онлайн-магазин книг</p>
-                    <h1 class="hero-simple__title">Книги без лишнего шума</h1>
+                    <h1 class="hero-simple__title hero-simple__title--compact">Книги без лишнего шума</h1>
                     <p class="hero-simple__text">
-                        На главной собраны рейтинги, в каталоге доступны фильтры, а карточка книги
-                        позволяет быстро добавить товар в корзину или избранное.
+                        Удобный книжный магазин с продуманным каталогом, быстрым поиском, честными
+                        отзывами и простой покупкой. Здесь легко находить интересные книги, сравнивать
+                        издания и оформлять заказ без лишних шагов.
                     </p>
                 </div>
 
@@ -46,10 +47,17 @@
                 <h2 class="section-title">Рейтинги книг</h2>
                 <div class="simple-grid simple-grid--5">
                     @foreach($quickRankings as $ranking)
-                        <a href="{{ route('catalog', ['period' => $ranking['period'], 'sort' => 'rating_desc']) }}" class="link-card link-card--ranking">
+                        @php
+                            $rankingQuery = match ($ranking['period']) {
+                                'new' => ['period' => 'new', 'sort' => 'newest'],
+                                'users' => ['period' => 'users', 'sort' => 'rating_desc'],
+                                default => ['period' => $ranking['period']],
+                            };
+                        @endphp
+
+                        <a href="{{ route('catalog', $rankingQuery) }}" class="link-card link-card--ranking">
                             <div class="stack-sm">
                                 <strong>{{ $ranking['title'] }}</strong>
-                                <span>{{ $ranking['description'] }}</span>
                             </div>
                         </a>
                     @endforeach
@@ -72,7 +80,6 @@
                                 @foreach($newArrivals as $book)
                                     @php
                                         $currentPrice = (float) $book->price;
-                                        $oldPrice = $book->getOriginalPrice();
                                         $discountPercent = $book->getDisplayDiscountPercent();
                                     @endphp
 
@@ -87,14 +94,13 @@
 
                                         <div class="card__body">
                                             <div class="price-stack">
-                                            <div class="price">{{ number_format($currentPrice, 0, '.', ' ') }} ₽</div>
-                                            <div class="price-meta">
-                                                @if($discountPercent > 0)
-                                                    <span class="price-old">{{ number_format($oldPrice, 0, '.', ' ') }} ₽</span>
-                                                    <span class="discount-badge">-{{ $discountPercent }}%</span>
-                                                @endif
+                                                <div class="price-meta">
+                                                    <span class="price">{{ number_format($currentPrice, 0, '.', ' ') }} ₽</span>
+                                                    @if($discountPercent > 0)
+                                                        <span class="discount-badge">-{{ $discountPercent }}%</span>
+                                                    @endif
+                                                </div>
                                             </div>
-                                        </div>
 
                                             <a href="{{ route('books.show', $book->getKey()) }}" class="card__title">{{ $book->book_name }}</a>
                                             <p class="muted">{{ $book->author->author_name ?? 'Автор не указан' }}</p>
@@ -129,7 +135,6 @@
                                             @foreach($shelf['books'] as $book)
                                                 @php
                                                     $currentPrice = (float) $book->price;
-                                                    $oldPrice = $book->getOriginalPrice();
                                                     $discountPercent = $book->getDisplayDiscountPercent();
                                                 @endphp
 
@@ -143,10 +148,9 @@
                                                     </a>
                                                     <div class="card__body">
                                                         <div class="price-stack">
-                                                            <div class="price">{{ number_format($currentPrice, 0, '.', ' ') }} ₽</div>
                                                             <div class="price-meta">
+                                                                <span class="price">{{ number_format($currentPrice, 0, '.', ' ') }} ₽</span>
                                                                 @if($discountPercent > 0)
-                                                                    <span class="price-old">{{ number_format($oldPrice, 0, '.', ' ') }} ₽</span>
                                                                     <span class="discount-badge">-{{ $discountPercent }}%</span>
                                                                 @endif
                                                             </div>

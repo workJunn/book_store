@@ -93,7 +93,18 @@ class Book extends Model
 
     public function getPlaceholderImageUrl(): string
     {
-        return 'https://via.placeholder.com/500x700/667eea/ffffff?text=' . urlencode($this->book_name);
+        return self::placeholderImageUrlFor($this->book_name);
+    }
+
+    public static function placeholderImageUrlFor(?string $title): string
+    {
+        $svg = <<<SVG
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 700">
+  <rect width="500" height="700" fill="#ffffff"/>
+</svg>
+SVG;
+
+        return 'data:image/svg+xml;charset=UTF-8,' . rawurlencode($svg);
     }
 
     public function hasDigitalFile(): bool
