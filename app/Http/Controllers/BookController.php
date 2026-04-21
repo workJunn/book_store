@@ -249,10 +249,6 @@ class BookController extends Controller
     private function buildNewArrivals(): Collection
     {
         return $this->baseBookQuery()
-            ->whereBetween('publication_date', [
-                now()->subWeek()->toDateString(),
-                now()->toDateString(),
-            ])
             ->orderByDesc('publication_date')
             ->orderBy('book_name')
             ->limit(10)
@@ -299,10 +295,7 @@ class BookController extends Controller
         }
 
         match ($periodFilter) {
-            'new' => $query->whereBetween('publication_date', [
-                now()->subWeek()->toDateString(),
-                now()->toDateString(),
-            ]),
+            'new' => $query->whereBetween('publication_date', $this->resolveNewReleasesRange()),
             'preorder' => $this->applyPreorderFilter($query),
             default => null,
         };
@@ -373,7 +366,7 @@ class BookController extends Controller
             ],
             'new' => [
                 'title' => 'Новинки сайта',
-                'description' => 'Книги, выпущенные за последнюю неделю.',
+                'description' => 'Книги, выпущенные за последний год.',
             ],
             'preorder' => [
                 'title' => 'Предзаказы книг',
@@ -388,6 +381,13 @@ class BookController extends Controller
                 'description' => 'Все книги магазина с фильтрами и сортировкой.',
             ],
         };
+    }
+
+    private function resolveNewReleasesRange(): array
+    {
+        $endDate = now();
+
+        return [$endDate->copy()->subYear(), $endDate];
     }
 
     private function applyPurchaseTopFilter(Builder $query, string $periodFilter): void

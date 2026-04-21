@@ -148,6 +148,51 @@ it('shows quick rankings on the welcome page and links them to catalog periods',
     Carbon::setTestNow();
 });
 
+it('shows exactly the latest ten books on the welcome page new arrivals shelf', function () {
+    Carbon::setTestNow('2026-03-23 12:00:00');
+
+    $author = Author::create([
+        'author_name' => 'Фрэнк Герберт',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Orbit',
+    ]);
+
+    foreach (range(1, 11) as $index) {
+        Book::create([
+            'book_name' => sprintf('Книга ленты %02d', $index),
+            'price' => 500 + $index,
+            'stock_quantity' => 5,
+            'publication_date' => now()->subDays(12 - $index)->toDateString(),
+            'number_of_pages' => 200 + $index,
+            'average_rating' => 4.0 + ($index / 100),
+            'description' => 'Тестовая книга для ленты новинок.',
+            'id_author' => $author->getKey(),
+            'id_publishers' => $publisher->getKey(),
+        ]);
+    }
+
+    $response = $this->get('/');
+
+    $response->assertOk();
+    $response->assertSeeInOrder([
+        'Книга ленты 11',
+        'Книга ленты 10',
+        'Книга ленты 09',
+        'Книга ленты 08',
+        'Книга ленты 07',
+        'Книга ленты 06',
+        'Книга ленты 05',
+        'Книга ленты 04',
+        'Книга ленты 03',
+        'Книга ленты 02',
+    ]);
+    $response->assertDontSee('Книга ленты 01');
+
+    Carbon::setTestNow();
+});
+
 it('builds weekly top books in catalog based on paid purchases and hides the old period text block', function () {
     Carbon::setTestNow('2026-03-23 12:00:00');
 
@@ -289,7 +334,7 @@ it('shows new books in the rating section sorted by newest first', function () {
     Carbon::setTestNow();
 });
 
-it('shows only books released during the last week in the new section', function () {
+it('shows all books released during the last year in the new section', function () {
     Carbon::setTestNow('2026-03-23 12:00:00');
 
     $author = Author::create([
@@ -301,10 +346,10 @@ it('shows only books released during the last week in the new section', function
     ]);
 
     Book::create([
-        'book_name' => 'Книга за пределами недели',
+        'book_name' => 'Книга старше года',
         'price' => 500.00,
         'stock_quantity' => 5,
-        'publication_date' => '2026-03-10',
+        'publication_date' => '2025-03-20',
         'number_of_pages' => 240,
         'average_rating' => 4.2,
         'description' => 'Первая книга.',
@@ -313,10 +358,10 @@ it('shows only books released during the last week in the new section', function
     ]);
 
     Book::create([
-        'book_name' => 'Книга за неделю',
+        'book_name' => 'Книга за последний год',
         'price' => 600.00,
         'stock_quantity' => 5,
-        'publication_date' => '2026-03-19',
+        'publication_date' => '2025-09-19',
         'number_of_pages' => 280,
         'average_rating' => 4.1,
         'description' => 'Вторая книга.',
@@ -327,8 +372,8 @@ it('shows only books released during the last week in the new section', function
     $response = $this->get('/catalog?period=new');
 
     $response->assertOk();
-    $response->assertSee('Книга за неделю');
-    $response->assertDontSee('Книга за пределами недели');
+    $response->assertSee('Книга за последний год');
+    $response->assertDontSee('Книга старше года');
 
     Carbon::setTestNow();
 });
