@@ -244,6 +244,174 @@ async function postJson(url) {
     return response.json();
 }
 
+function getFirstValidationMessage(errors) {
+    if (!errors || typeof errors !== 'object') {
+        return null;
+    }
+
+    const firstMessages = Object.values(errors).find((messages) => Array.isArray(messages) && messages.length);
+
+    return firstMessages?.[0] || null;
+}
+
+function updateBookReviewMeta(data) {
+    const averageRating = document.querySelector('[data-book-average-rating]');
+    if (averageRating && typeof data.average_rating !== 'undefined') {
+        averageRating.textContent = `${data.average_rating} / 5`;
+    }
+
+    const roundedRating = Number(data.rounded_rating || 0);
+    const ratingStars = document.querySelector('[data-book-rating-stars]');
+    if (ratingStars) {
+        ratingStars.textContent = Array.from({ length: 5 }, (_, index) => index < roundedRating ? '★' : '☆').join('');
+    }
+
+    const reviewsSummary = document.querySelector('[data-book-reviews-summary]');
+    if (reviewsSummary && data.reviews_summary) {
+        reviewsSummary.textContent = data.reviews_summary;
+    }
+
+    document.querySelectorAll('[data-reviews-count]').forEach((element) => {
+        if (typeof data.reviews_count !== 'undefined') {
+            element.textContent = data.reviews_count;
+        }
+    });
+}
+
+async function submitReviewForm(form) {
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton?.textContent;
+    const checkedRating = form.querySelector('[name="rating"]:checked');
+
+    if (!checkedRating) {
+        const ratingGroup = form.querySelector('.review-stars');
+
+        showFlashMessage('Выберите оценку книги перед публикацией отзыва.', 'error');
+        ratingGroup?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        form.querySelector('[name="rating"]')?.focus();
+
+        return;
+    }
+
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Сохранение...';
+    }
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': token,
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: new FormData(form),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+            showFlashMessage(getFirstValidationMessage(data.errors) || data.message || 'Не удалось сохранить отзыв', 'error');
+            return;
+        }
+
+        const reviewsList = document.querySelector('[data-reviews-list]');
+
+        if (reviewsList) {
+            reviewsList.querySelector('[data-reviews-empty]')?.remove();
+            reviewsList.insertAdjacentHTML('afterbegin', data.review_html);
+        }
+
+        updateBookReviewMeta(data);
+        showFlashMessage(data.message || 'Ваш отзыв сохранен.');
+
+        const reviewText = form.querySelector('[name="review_text"]');
+        if (reviewText && typeof data.review_text !== 'undefined') {
+            reviewText.value = data.review_text;
+        }
+
+        form.querySelectorAll('[name="rating"]').forEach((ratingInput) => {
+            ratingInput.checked = Number(ratingInput.value) === Number(data.rating);
+        });
+
+        if (submitButton) {
+            submitButton.textContent = data.submit_label || 'Опубликовать отзыв';
+        }
+    } catch (error) {
+        showFlashMessage('Ошибка сервера', 'error');
+    } finally {
+        if (submitButton) {
+            submitButton.disabled = false;
+            if (submitButton.textContent === 'Сохранение...') {
+                submitButton.textContent = originalButtonText;
+            }
+        }
+    }
+}
+
+async function voteReview(button) {
+    const loginUrl = button.dataset.loginUrl;
+
+    if (loginUrl) {
+        window.location.assign(loginUrl);
+        return;
+    }
+
+    const reviewCard = button.closest('[data-review-card]');
+    const voteUrl = button.dataset.reviewVoteUrl;
+    const vote = button.dataset.vote;
+
+    if (!reviewCard || !voteUrl || !vote) {
+        return;
+    }
+
+    const formData = new FormData();
+    formData.append('vote', vote);
+
+    button.disabled = true;
+
+    try {
+        const response = await fetch(voteUrl, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': token,
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: formData,
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+            showFlashMessage(getFirstValidationMessage(data.errors) || data.message || 'Не удалось сохранить голос', 'error');
+            return;
+        }
+
+        const helpfulCount = reviewCard.querySelector('[data-review-helpful-count]');
+        const notHelpfulCount = reviewCard.querySelector('[data-review-not-helpful-count]');
+
+        if (helpfulCount) {
+            helpfulCount.textContent = data.helpful_count;
+        }
+
+        if (notHelpfulCount) {
+            notHelpfulCount.textContent = data.not_helpful_count;
+        }
+
+        reviewCard.querySelectorAll('[data-review-vote]').forEach((voteButton) => {
+            voteButton.classList.toggle('is-active', voteButton.dataset.vote === data.user_vote);
+        });
+
+        showFlashMessage(data.message || 'Ваш голос учтен.');
+    } catch (error) {
+        showFlashMessage('Ошибка сервера', 'error');
+    } finally {
+        button.disabled = false;
+    }
+}
+
 async function addToCart(bookId) {
     try {
         const data = await postJson(`/cart/add/${bookId}`);
@@ -734,6 +902,12 @@ document.addEventListener('click', (event) => {
         return;
     }
 
+    const reviewVoteButton = event.target.closest('[data-review-vote]');
+    if (reviewVoteButton) {
+        voteReview(reviewVoteButton);
+        return;
+    }
+
     const cartActionButton = event.target.closest('[data-cart-action]');
     if (cartActionButton) {
         updateCartItem(cartActionButton.dataset.itemId, cartActionButton.dataset.cartAction);
@@ -796,6 +970,17 @@ document.addEventListener('click', (event) => {
     if (topUpModal && event.target === topUpModal) {
         closeTopUpModal();
     }
+});
+
+document.addEventListener('submit', (event) => {
+    const reviewForm = event.target.closest('[data-review-form]');
+
+    if (!reviewForm) {
+        return;
+    }
+
+    event.preventDefault();
+    submitReviewForm(reviewForm);
 });
 
 document.addEventListener('keydown', (event) => {

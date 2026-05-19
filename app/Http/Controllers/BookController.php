@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Book;
 use App\Models\Genre;
 use App\Models\Review;
+use App\Models\ReviewVote;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\Request;
@@ -141,18 +142,14 @@ class BookController extends Controller
             'author',
             'publisher',
             'genres',
-            'reviews' => fn ($query) => $query->with('user'),
+            'reviews' => fn ($query) => $this->reviewPresentationQuery($query),
         ])->withCount('reviews')->findOrFail($id);
 
         $verifiedBuyerIds = $this->getVerifiedBuyerIds($book);
         $reviews = $this->sortReviews($book->reviews, $reviewSort)->values();
-        $userReview = Auth::check()
-            ? $reviews->firstWhere('id_users', Auth::id())
-            : null;
 
         return view('books.show', [
             'book' => $book,
-            'userReview' => $userReview,
             'reviews' => $reviews,
             'reviewSort' => $reviewSort,
             'verifiedBuyerIds' => $verifiedBuyerIds,
@@ -170,25 +167,73 @@ class BookController extends Controller
             'review_text.max' => 'Комментарий не должен превышать 2000 символов.',
         ]);
 
-        Review::updateOrCreate(
-            [
-                'id_books' => $book->getKey(),
-                'id_users' => Auth::id(),
-            ],
-            [
-                'rating' => $validated['rating'],
-                'review_text' => trim((string) ($validated['review_text'] ?? '')) ?: null,
-                'review_date' => now(),
-            ]
-        );
+        $review = Review::create([
+            'id_books' => $book->getKey(),
+            'id_users' => Auth::id(),
+            'rating' => $validated['rating'],
+            'review_text' => trim((string) ($validated['review_text'] ?? '')) ?: null,
+            'review_date' => now(),
+        ]);
 
         $book->update([
             'average_rating' => round((float) $book->reviews()->avg('rating'), 2),
         ]);
 
+        if ($request->expectsJson()) {
+            $book->refresh();
+            $review->load('user');
+            $reviewsCount = $book->reviews()->count();
+            $verifiedBuyerIds = $this->getVerifiedBuyerIds($book);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ваш отзыв сохранен.',
+                'review_html' => view('partials.review-card', [
+                    'review' => $this->loadReviewForPresentation($review),
+                    'verifiedBuyerIds' => $verifiedBuyerIds,
+                ])->render(),
+                'average_rating' => number_format((float) $book->average_rating, 2, '.', ' '),
+                'rounded_rating' => round((float) $book->average_rating),
+                'reviews_count' => $reviewsCount,
+                'reviews_summary' => 'Основано на '.$reviewsCount.' '.$this->getReviewWord($reviewsCount),
+                'review_id' => (int) $review->getKey(),
+                'review_text' => '',
+                'rating' => null,
+                'submit_label' => 'Опубликовать отзыв',
+            ]);
+        }
+
         return redirect()
             ->route('books.show', $book)
             ->with('status', 'Ваш отзыв сохранен.');
+    }
+
+    public function voteReview(Request $request, Review $review)
+    {
+        $validated = $request->validate([
+            'vote' => ['required', 'in:helpful,not_helpful'],
+        ]);
+
+        ReviewVote::updateOrCreate(
+            [
+                'id_reviews' => $review->getKey(),
+                'id_users' => Auth::id(),
+            ],
+            [
+                'is_helpful' => $validated['vote'] === 'helpful',
+            ]
+        );
+
+        $review = $this->loadReviewForPresentation($review);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Ваш голос учтен.',
+            'review_id' => (int) $review->getKey(),
+            'helpful_count' => (int) $review->helpful_count,
+            'not_helpful_count' => (int) $review->not_helpful_count,
+            'user_vote' => $validated['vote'],
+        ]);
     }
 
     private function buildShelves(): Collection
@@ -454,6 +499,27 @@ class BookController extends Controller
         };
     }
 
+    private function reviewPresentationQuery($query)
+    {
+        return $query
+            ->with('user')
+            ->withCount([
+                'votes as helpful_count' => fn (Builder $voteQuery) => $voteQuery->where('is_helpful', true),
+                'votes as not_helpful_count' => fn (Builder $voteQuery) => $voteQuery->where('is_helpful', false),
+            ])
+            ->when(Auth::check(), function (Builder $reviewQuery): void {
+                $reviewQuery->with([
+                    'votes' => fn ($voteQuery) => $voteQuery->where('id_users', Auth::id()),
+                ]);
+            });
+    }
+
+    private function loadReviewForPresentation(Review $review): Review
+    {
+        return $this->reviewPresentationQuery(Review::query())
+            ->findOrFail($review->getKey());
+    }
+
     private function getVerifiedBuyerIds(Book $book): Collection
     {
         return DB::table('orders_details')
@@ -463,6 +529,11 @@ class BookController extends Controller
             ->pluck('orders.id_users')
             ->unique()
             ->values();
+    }
+
+    private function getReviewWord(int $count): string
+    {
+        return $count === 1 ? 'отзыв' : (($count >= 2 && $count <= 4) ? 'отзыва' : 'отзывов');
     }
 
 }

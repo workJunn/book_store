@@ -99,6 +99,11 @@ img {
     gap: 16px;
 }
 
+.book-layout > .stack-md:first-child {
+    justify-items: start;
+    align-items: start;
+}
+
 .stack-sm {
     display: grid;
     gap: 10px;
@@ -653,17 +658,22 @@ img {
 
 .chips {
     display: flex;
-    flex-wrap: wrap;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    align-items: flex-start;
     gap: 8px;
+    direction: ltr;
 }
 
 .chip {
     display: inline-flex;
     align-items: center;
     padding: 6px 10px;
+    border: 1px solid #c7d2fe;
     border-radius: 999px;
-    background: #eef2ff;
-    color: #3730a3;
+    background: #fff;
+    color: #111827;
     font-size: 0.85rem;
     font-weight: 600;
 }
@@ -718,6 +728,11 @@ img {
 .favorite-button--storefront {
     flex: 0 0 44px;
     border-radius: 12px;
+}
+
+.actions .btn-book-action {
+    flex: 1 1 220px;
+    width: auto;
 }
 
 .book-shelf .favorite-button--storefront {
@@ -1273,6 +1288,15 @@ input[type='number'] {
     flex-wrap: wrap;
 }
 
+.reviews-toolbar .reviews-tabs {
+    margin-left: auto;
+    justify-content: flex-end;
+}
+
+.reviews-sort {
+    flex: 0 1 280px;
+}
+
 .reviews-tab {
     border: 1px solid var(--line);
     border-radius: 999px;
@@ -1373,6 +1397,13 @@ input[type='number'] {
     padding: 8px 12px;
     cursor: pointer;
     color: #111827;
+}
+
+.review-feedback__button.is-active {
+    border-color: var(--primary);
+    background: #eff6ff;
+    color: var(--primary);
+    font-weight: 700;
 }
 
 .review-form-toggle {

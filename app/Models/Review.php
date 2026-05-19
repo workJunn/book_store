@@ -33,4 +33,9 @@ class Review extends Model
     {
         return $this->belongsTo(User::class, 'id_users', 'id_users');
     }
+
+    public function votes()
+    {
+        return $this->hasMany(ReviewVote::class, 'id_reviews', 'id_reviews');
+    }
 }

@@ -95,8 +95,6 @@ return new class extends Migration
             $table->text('review_text')->nullable();
             $table->timestamp('review_date')->useCurrent();
 
-            $table->unique(['id_books', 'id_users']);
-
             $table->foreign('id_books')->references('id_books')->on('books');
             $table->foreign('id_users')->references('id_users')->on('users');
         });

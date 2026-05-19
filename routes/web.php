@@ -21,6 +21,7 @@ Route::view('/payment-methods', 'payment-methods')->name('payment-methods');
 Route::get('/partner-program', [PartnerProgramController::class, 'show'])->name('partner.program');
 Route::get('/books/{book}', [BookController::class, 'show'])->name('books.show');
 Route::post('/books/{book}/reviews', [BookController::class, 'storeReview'])->middleware('auth')->name('books.reviews.store');
+Route::post('/reviews/{review}/vote', [BookController::class, 'voteReview'])->middleware('auth')->name('reviews.vote');
 
 Route::get('/cart', [CartController::class, 'index'])->name('cart.index');
 Route::post('/cart/add/{id}', [CartController::class, 'add'])->name('cart.add');
