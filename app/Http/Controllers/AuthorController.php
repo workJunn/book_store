@@ -8,6 +8,7 @@ use App\Models\Publisher;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 
 class AuthorController extends Controller
@@ -85,6 +86,34 @@ class AuthorController extends Controller
         return redirect()
             ->route('author.index')
             ->with('status', 'Книга обновлена.');
+    }
+
+    public function destroyBook(Book $book)
+    {
+        $author = Auth::user()->authorProfile()->firstOrFail();
+        abort_unless((int) $book->id_author === (int) $author->getKey(), 403);
+
+        if ($book->orderDetails()->exists()) {
+            return redirect()
+                ->route('author.index')
+                ->with('status', 'Книгу нельзя удалить, пока она присутствует в оформленных или оплаченных заказах.');
+        }
+
+        $coverImagePath = $book->cover_image;
+        $digitalFilePath = $book->digital_file_path;
+
+        DB::transaction(function () use ($book) {
+            $book->reviews()->delete();
+            $book->genres()->detach();
+            $book->delete();
+        });
+
+        $this->deleteCoverImage($coverImagePath);
+        $this->deleteDigitalBookFile($digitalFilePath);
+
+        return redirect()
+            ->route('author.index')
+            ->with('status', 'Книга удалена.');
     }
 
     private function validateBook(Request $request): array

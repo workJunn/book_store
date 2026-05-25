@@ -72,8 +72,16 @@ it('allows admin to approve a partner application and opens the author panel for
         'status' => 'pending',
     ]);
 
+    $this->actingAs($admin)->get(route('admin.authors.index'))
+        ->assertOk()
+        ->assertDontSee('Партнёрские заявки')
+        ->assertDontSee('Партнерский автор')
+        ->assertDontSee('Автор современной прозы.')
+        ->assertDontSee('Публикуюсь с 2020 года.')
+        ->assertDontSee('Принять');
+
     $this->actingAs($admin)->post(route('admin.partner-applications.approve', $application))
-        ->assertRedirect(route('admin.partner-applications.index'));
+        ->assertRedirect(route('admin.authors.index'));
 
     $authorRole = Role::query()->where('role_name', 'author')->firstOrFail();
     $user->refresh();
@@ -89,6 +97,32 @@ it('allows admin to approve a partner application and opens the author panel for
         'id_partner_application' => $application->getKey(),
         'status' => 'approved',
     ]);
+
+    $author = Author::query()->where('id_users', $user->getKey())->firstOrFail();
+
+    $this->actingAs($admin)->get(route('admin.authors.index'))
+        ->assertOk()
+        ->assertSee('Партнерский автор')
+        ->assertDontSee('Партнёрская заявка')
+        ->assertDontSee('выплаты: Карта')
+        ->assertDontSee('Партнёрские заявки')
+        ->assertDontSee('Автор современной прозы.')
+        ->assertDontSee('Публикуюсь с 2020 года.');
+
+    $authorPageResponse = $this->actingAs($admin)->get(route('admin.authors.show', $author));
+
+    $authorPageResponse
+        ->assertOk()
+        ->assertSee('Партнерский автор')
+        ->assertDontSee('Данные партнёра')
+        ->assertDontSee('Имя автора')
+        ->assertDontSee('Биография')
+        ->assertDontSee('Автор современной прозы.')
+        ->assertSee('Публикуюсь с 2020 года.')
+        ->assertSee('Карта');
+
+    expect(strpos($authorPageResponse->getContent(), 'Карта'))
+        ->toBeLessThan(strpos($authorPageResponse->getContent(), 'Книги автора'));
 
     $this->actingAs($user)->get(route('dashboard'))
         ->assertOk()
@@ -150,6 +184,94 @@ it('allows an approved author to manage own books with discount editing', functi
         'id_author' => $author->getKey(),
         'price' => 990,
         'discount_percent' => 25,
+    ]);
+});
+
+it('allows an author to delete their own book', function () {
+    $authorRole = Role::create([
+        'role_name' => 'author',
+    ]);
+
+    $user = User::factory()->create([
+        'id_role' => $authorRole->getKey(),
+    ]);
+
+    $author = Author::create([
+        'id_users' => $user->getKey(),
+        'author_name' => 'Анна Автор',
+        'biography' => 'Биография автора.',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Новая Волна',
+    ]);
+
+    $book = Book::create([
+        'book_name' => 'Новая книга',
+        'price' => 900,
+        'discount_percent' => 15,
+        'stock_quantity' => 12,
+        'publication_date' => '2026-03-20',
+        'number_of_pages' => 280,
+        'description' => 'Описание книги.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $this->actingAs($user)->get(route('author.index'))
+        ->assertOk()
+        ->assertSee('Удалить');
+
+    $this->actingAs($user)->delete(route('author.books.destroy', $book))
+        ->assertRedirect(route('author.index'))
+        ->assertSessionHas('status', 'Книга удалена.');
+
+    $this->assertDatabaseMissing('books', [
+        'id_books' => $book->getKey(),
+    ]);
+});
+
+it('prevents an author from deleting another author book', function () {
+    $authorRole = Role::create([
+        'role_name' => 'author',
+    ]);
+
+    $user = User::factory()->create([
+        'id_role' => $authorRole->getKey(),
+    ]);
+
+    $owner = User::factory()->create([
+        'id_role' => $authorRole->getKey(),
+    ]);
+
+    Author::create([
+        'id_users' => $user->getKey(),
+        'author_name' => 'Анна Автор',
+        'biography' => 'Биография автора.',
+    ]);
+
+    $otherAuthor = Author::create([
+        'id_users' => $owner->getKey(),
+        'author_name' => 'Другой Автор',
+        'biography' => 'Другая биография.',
+    ]);
+
+    $book = Book::create([
+        'book_name' => 'Чужая книга',
+        'price' => 900,
+        'discount_percent' => 15,
+        'stock_quantity' => 12,
+        'publication_date' => '2026-03-20',
+        'number_of_pages' => 280,
+        'description' => 'Описание книги.',
+        'id_author' => $otherAuthor->getKey(),
+    ]);
+
+    $this->actingAs($user)->delete(route('author.books.destroy', $book))
+        ->assertForbidden();
+
+    $this->assertDatabaseHas('books', [
+        'id_books' => $book->getKey(),
     ]);
 });
 

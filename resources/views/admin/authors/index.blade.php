@@ -12,11 +12,15 @@
             @include('partials.admin-page-head', ['title' => 'Авторы'])
 
             <section class="stack-md">
+                <div>
+                    <h2 class="subheading">Авторы</h2>
+                </div>
+
                 @forelse($authors as $author)
                     <article class="info-box stack-sm">
                         <div class="order-line">
                             <a href="{{ route('admin.authors.show', $author) }}" class="text-link">{{ $author->author_name }}</a>
-                            <span></span>
+                            <span>{{ $author->user?->email ?? 'Email не указан' }}</span>
                             <span>Книг автора: {{ $author->books_count }}</span>
                         </div>
                     </article>

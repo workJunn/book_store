@@ -12,6 +12,7 @@ use App\Models\Review;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -41,6 +42,7 @@ class AdminController extends Controller
     {
         return view('admin.authors.index', [
             'authors' => Author::query()
+                ->with('user')
                 ->withCount('books')
                 ->orderBy('author_name')
                 ->get(),
@@ -75,7 +77,7 @@ class AdminController extends Controller
     {
         if ($application->status === 'approved') {
             return redirect()
-                ->route('admin.partner-applications.index')
+                ->route('admin.authors.index')
                 ->with('status', 'Заявка уже была подтверждена ранее.');
         }
 
@@ -103,7 +105,7 @@ class AdminController extends Controller
         });
 
         return redirect()
-            ->route('admin.partner-applications.index')
+            ->route('admin.authors.index')
             ->with('status', 'Заявка подтверждена. Пользователь переведен в роль автора.');
     }
 
@@ -195,12 +197,44 @@ class AdminController extends Controller
 
     public function showAuthor(Author $author)
     {
-        $author->load(['books.publisher', 'books.genres']);
+        $author->load([
+            'books.publisher',
+            'books.genres',
+            'user.partnerApplications' => fn ($query) => $query->latest('created_at'),
+        ]);
 
         return view('admin.authors.show', [
             'author' => $author,
             'books' => $author->books->sortBy('book_name')->values(),
+            'partnerApplication' => $author->user?->partnerApplications->first(),
         ]);
+    }
+
+    public function destroyAuthor(Author $author)
+    {
+        DB::transaction(function () use ($author) {
+            $user = $author->user()->with('role')->first();
+
+            Book::query()
+                ->where('id_author', $author->getKey())
+                ->update(['id_author' => null]);
+
+            $author->delete();
+
+            if ($user?->isAuthor()) {
+                $userRole = Role::query()->firstOrCreate([
+                    'role_name' => 'user',
+                ]);
+
+                $user->update([
+                    'id_role' => $userRole->getKey(),
+                ]);
+            }
+        });
+
+        return redirect()
+            ->route('admin.authors.index')
+            ->with('status', 'Автор удалён из системы.');
     }
 
     public function books()
@@ -232,6 +266,7 @@ class AdminController extends Controller
         $validated = $this->validateBook($request);
         $validated['is_preorder'] = $request->boolean('is_preorder');
         $validated['cover_image'] = $this->storeCoverImage($request);
+        [$validated['digital_file_path'], $validated['digital_file_original_name']] = $this->storeDigitalBookFile($request);
 
         $book = Book::create($validated);
         $book->genres()->sync($request->input('genre_ids', []));
@@ -264,6 +299,7 @@ class AdminController extends Controller
         $validated = $this->validateBook($request);
         $validated['is_preorder'] = $request->boolean('is_preorder');
         $validated['cover_image'] = $this->resolveCoverImagePath($request, $book);
+        [$validated['digital_file_path'], $validated['digital_file_original_name']] = $this->resolveDigitalBookFile($request, $book);
 
         $book->update($validated);
         $book->genres()->sync($request->input('genre_ids', []));
@@ -325,6 +361,8 @@ class AdminController extends Controller
             'book_name' => ['required', 'string', 'max:200'],
             'cover' => ['nullable', 'image', 'max:5120'],
             'remove_cover_image' => ['nullable', 'boolean'],
+            'book_file' => ['nullable', 'file', 'mimes:pdf,epub,fb2,txt', 'max:51200'],
+            'remove_book_file' => ['nullable', 'boolean'],
             'price' => ['required', 'numeric', 'min:0'],
             'discount_percent' => ['required', 'integer', 'between:0,95'],
             'stock_quantity' => ['required', 'integer', 'min:0'],
@@ -348,6 +386,20 @@ class AdminController extends Controller
         return $request->file('cover')->store('books', 'public');
     }
 
+    private function storeDigitalBookFile(Request $request): array
+    {
+        $file = $request->file('book_file');
+
+        if (! $file instanceof UploadedFile) {
+            return [null, null];
+        }
+
+        return [
+            $file->store('books/files', 'local'),
+            $file->getClientOriginalName(),
+        ];
+    }
+
     private function resolveCoverImagePath(Request $request, Book $book): ?string
     {
         if ($request->boolean('remove_cover_image')) {
@@ -364,6 +416,26 @@ class AdminController extends Controller
         $this->deleteCoverImage($book->cover_image);
 
         return $newCoverImagePath;
+    }
+
+    private function resolveDigitalBookFile(Request $request, Book $book): array
+    {
+        if ($request->boolean('remove_book_file')) {
+            $this->deleteDigitalBookFile($book->digital_file_path);
+
+            return [null, null];
+        }
+
+        $file = $request->file('book_file');
+
+        if (! $file instanceof UploadedFile) {
+            return [$book->digital_file_path, $book->digital_file_original_name];
+        }
+
+        $storedFile = $this->storeDigitalBookFile($request);
+        $this->deleteDigitalBookFile($book->digital_file_path);
+
+        return $storedFile;
     }
 
     private function deleteCoverImage(?string $path): void

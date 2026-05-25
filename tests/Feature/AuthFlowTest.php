@@ -62,6 +62,28 @@ it('logs in an admin and redirects to admin panel', function () {
     $this->assertAuthenticatedAs($admin);
 });
 
+it('always redirects an admin to admin panel after login', function () {
+    $adminRole = Role::create([
+        'role_name' => 'admin',
+    ]);
+
+    $admin = User::factory()->create([
+        'email' => 'admin-intended@example.com',
+        'password' => Hash::make('secret123'),
+        'id_role' => $adminRole->getKey(),
+    ]);
+
+    $response = $this->withSession([
+        'url.intended' => route('dashboard'),
+    ])->post('/login', [
+        'email' => $admin->email,
+        'password' => 'secret123',
+    ]);
+
+    $response->assertRedirect(route('admin.index'));
+    $this->assertAuthenticatedAs($admin);
+});
+
 it('sends a password reset notification', function () {
     Notification::fake();
 

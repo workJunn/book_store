@@ -73,6 +73,9 @@ Route::get('/author/books/{book}/edit', [AuthorController::class, 'editBook'])
 Route::match(['put', 'patch'], '/author/books/{book}', [AuthorController::class, 'updateBook'])
     ->middleware(['auth', 'author'])
     ->name('author.books.update');
+Route::delete('/author/books/{book}', [AuthorController::class, 'destroyBook'])
+    ->middleware(['auth', 'author'])
+    ->name('author.books.destroy');
 Route::get('/admin', [AdminController::class, 'index'])
     ->middleware(['auth', 'admin'])
     ->name('admin.index');
@@ -85,6 +88,9 @@ Route::get('/admin/authors', [AdminController::class, 'authors'])
 Route::get('/admin/authors/{author}', [AdminController::class, 'showAuthor'])
     ->middleware(['auth', 'admin'])
     ->name('admin.authors.show');
+Route::delete('/admin/authors/{author}', [AdminController::class, 'destroyAuthor'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.authors.destroy');
 Route::get('/admin/users', [AdminController::class, 'users'])
     ->middleware(['auth', 'admin'])
     ->name('admin.users.index');

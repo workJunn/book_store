@@ -16,7 +16,6 @@
                         <p class="section-text">Доступ только для администратора системы.</p>
                     </div>
                     <div class="actions">
-                        <a href="{{ url()->previous() }}" class="btn btn-secondary">Назад</a>
                         @include('partials.admin-nav')
                     </div>
                 </div>
@@ -72,6 +71,11 @@
                     </div>
                 @endif
             </section>
+
+            <form method="POST" action="{{ route('logout') }}" class="logout-form">
+                @csrf
+                <button type="submit" class="btn btn-secondary cart-checkout-button">Выйти</button>
+            </form>
         </section>
     </main>
 </body>

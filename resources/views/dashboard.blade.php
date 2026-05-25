@@ -49,91 +49,95 @@
                             <div class="info-label">Email</div>
                             <div class="info-value">{{ $user->email }}</div>
                         </article>
-                        <article class="info-box profile-card">
-                            <div class="info-label">Телефон</div>
-                            <div class="info-value">{{ $user->phone_number ?: 'Не указан' }}</div>
-                        </article>
-                        <article class="info-box profile-card">
-                            <div class="balance-row">
-                                <div class="balance-row__details">
-                                    <div class="info-label">Баланс</div>
-                                    <div class="info-value balance-row__value">{{ number_format((float) $user->balance, 2, '.', ' ') }} ₽</div>
+                        @if(! $user->isAdmin())
+                            <article class="info-box profile-card">
+                                <div class="info-label">Телефон</div>
+                                <div class="info-value">{{ $user->phone_number ?: 'Не указан' }}</div>
+                            </article>
+                            <article class="info-box profile-card">
+                                <div class="balance-row">
+                                    <div class="balance-row__details">
+                                        <div class="info-label">Баланс</div>
+                                        <div class="info-value balance-row__value">{{ number_format((float) $user->balance, 2, '.', ' ') }} ₽</div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        class="btn btn-secondary balance-row__button"
+                                        data-open-topup
+                                        aria-haspopup="dialog"
+                                        aria-controls="topup-modal"
+                                    >
+                                        Пополнить
+                                    </button>
                                 </div>
-                                <button
-                                    type="button"
-                                    class="btn btn-secondary balance-row__button"
-                                    data-open-topup
-                                    aria-haspopup="dialog"
-                                    aria-controls="topup-modal"
-                                >
-                                    Пополнить
-                                </button>
-                            </div>
-                        </article>
-                        <article class="info-box profile-card">
-                            <div class="info-label">Дата регистрации</div>
-                            <div class="info-value">{{ $user->registration_date ? $user->registration_date->format('d.m.Y H:i') : 'Не указана' }}</div>
-                        </article>
-                        <article class="info-box profile-card">
-                            <div class="info-label">Последнее обновление</div>
-                            <div class="info-value">{{ $user->updated_at ? $user->updated_at->format('d.m.Y H:i') : 'Не обновлялся' }}</div>
-                        </article>
-                        <article class="info-box profile-card">
-                            <div class="info-label">Партнерская программа</div>
-                            <div class="info-value">
-                                @if($user->isAuthor())
-                                    Автор подключен
-                                @elseif($latestPartnerApplication)
-                                    {{ match($latestPartnerApplication->status) {
-                                        'approved' => 'Заявка одобрена',
-                                        default => 'Заявка на рассмотрении',
-                                    } }}
-                                @else
-                                    Вы еще не подали заявку
-                                @endif
-                            </div>
-                        </article>
-                    </div>
-                </section>
-
-                <section class="stack-md">
-                    <div>
-                        <h2 class="subheading">Быстрые действия</h2>
-                        <p class="section-text">Управление оплатой, партнерской программой и личным кабинетом автора.</p>
-                    </div>
-
-                    <div class="actions">
-                        <a href="{{ route('partner.program') }}" class="btn btn-secondary">Партнерская программа</a>
-                        @if($user->isAuthor())
-                            <a href="{{ route('author.index') }}" class="btn btn-secondary">Панель автора</a>
+                            </article>
+                            <article class="info-box profile-card">
+                                <div class="info-label">Дата регистрации</div>
+                                <div class="info-value">{{ $user->registration_date ? $user->registration_date->format('d.m.Y H:i') : 'Не указана' }}</div>
+                            </article>
+                            <article class="info-box profile-card">
+                                <div class="info-label">Последнее обновление</div>
+                                <div class="info-value">{{ $user->updated_at ? $user->updated_at->format('d.m.Y H:i') : 'Не обновлялся' }}</div>
+                            </article>
+                            <article class="info-box profile-card">
+                                <div class="info-label">Партнерская программа</div>
+                                <div class="info-value">
+                                    @if($user->isAuthor())
+                                        Автор подключен
+                                    @elseif($latestPartnerApplication)
+                                        {{ match($latestPartnerApplication->status) {
+                                            'approved' => 'Заявка одобрена',
+                                            default => 'Заявка на рассмотрении',
+                                        } }}
+                                    @else
+                                        Вы еще не подали заявку
+                                    @endif
+                                </div>
+                            </article>
                         @endif
                     </div>
                 </section>
 
-                <section class="stack-md">
-                    <div>
-                        <h2 class="subheading">Мои заказы</h2>
-                        <p class="section-text">Здесь отображаются оформленные и оплаченные заказы.</p>
-                    </div>
+                @if(! $user->isAdmin())
+                    <section class="stack-md">
+                        <div>
+                            <h2 class="subheading">Быстрые действия</h2>
+                            <p class="section-text">Управление оплатой, партнерской программой и личным кабинетом автора.</p>
+                        </div>
 
-                    @if($user->orders->isNotEmpty())
-                        <div class="stack-md">
-                            @foreach($user->orders as $order)
-                                <article class="info-box stack-sm">
-                                    <div class="order-line">
-                                        <a href="{{ route('orders.show', $order) }}" class="text-link">Заказ №{{ $order->getKey() }}</a>
-                                        <span>{{ $order->order_date ? $order->order_date->format('d.m.Y H:i') : 'Дата не указана' }}</span>
-                                        <span>{{ number_format((float) $order->total_amount, 0, '.', ' ') }} ₽</span>
-                                    </div>
-                                </article>
-                            @endforeach
+                        <div class="actions">
+                            <a href="{{ route('partner.program') }}" class="btn btn-secondary">Партнерская программа</a>
+                            @if($user->isAuthor())
+                                <a href="{{ route('author.index') }}" class="btn btn-secondary">Панель автора</a>
+                            @endif
                         </div>
-                    @else
-                        <div class="empty-state">
-                            У вас пока нет заказов.
+                    </section>
+
+                    <section class="stack-md">
+                        <div>
+                            <h2 class="subheading">Мои заказы</h2>
+                            <p class="section-text">Здесь отображаются оформленные и оплаченные заказы.</p>
                         </div>
-                    @endif
-                </section>
+
+                        @if($user->orders->isNotEmpty())
+                            <div class="stack-md">
+                                @foreach($user->orders as $order)
+                                    <article class="info-box stack-sm">
+                                        <div class="order-line">
+                                            <a href="{{ route('orders.show', $order) }}" class="text-link">Заказ №{{ $order->getKey() }}</a>
+                                            <span>{{ $order->order_date ? $order->order_date->format('d.m.Y H:i') : 'Дата не указана' }}</span>
+                                            <span>{{ number_format((float) $order->total_amount, 0, '.', ' ') }} ₽</span>
+                                        </div>
+                                    </article>
+                                @endforeach
+                            </div>
+                        @else
+                            <div class="empty-state">
+                                У вас пока нет заказов.
+                            </div>
+                        @endif
+                    </section>
+                @endif
 
                 <form method="POST" action="{{ route('logout') }}" class="logout-form">
                     @csrf

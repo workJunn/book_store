@@ -61,6 +61,11 @@
                             </div>
                             <div class="actions">
                                 <a href="{{ route('author.books.edit', $book) }}" class="btn btn-secondary">Редактировать</a>
+                                <form method="POST" action="{{ route('author.books.destroy', $book) }}">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="btn btn-danger">Удалить</button>
+                                </form>
                             </div>
                         </div>
                     </article>

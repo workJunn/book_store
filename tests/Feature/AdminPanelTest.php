@@ -40,10 +40,49 @@ it('allows only admins to open the admin panel', function () {
 
     $this->actingAs($admin)->get(route('admin.index'))
         ->assertOk()
-        ->assertSee('Админ панель');
+        ->assertSee('Админ панель')
+        ->assertSee(route('admin.index'), false)
+        ->assertDontSee('Профиль')
+        ->assertDontSee('Партнеры')
+        ->assertDontSee('Назад')
+        ->assertSee('Выйти')
+        ->assertSee(route('logout'), false);
 
     $this->actingAs($user)->get(route('admin.index'))
         ->assertForbidden();
+});
+
+it('does not show customer dashboard sections to admin users', function () {
+    $adminRole = Role::create([
+        'role_name' => 'admin',
+    ]);
+
+    $admin = User::factory()->create([
+        'id_role' => $adminRole->getKey(),
+        'phone_number' => '+79990000001',
+        'balance' => 0,
+        'registration_date' => '2026-03-23 21:54:00',
+        'created_at' => '2026-03-23 18:54:00',
+        'updated_at' => '2026-03-23 18:54:00',
+    ]);
+
+    $this->actingAs($admin)->get(route('dashboard'))
+        ->assertOk()
+        ->assertDontSee('Телефон')
+        ->assertDontSee('+79990000001')
+        ->assertDontSee('Баланс')
+        ->assertDontSee('0.00 ₽')
+        ->assertDontSee('Пополнить')
+        ->assertDontSee('Дата регистрации')
+        ->assertDontSee('23.03.2026 21:54')
+        ->assertDontSee('Последнее обновление')
+        ->assertDontSee('23.03.2026 18:54')
+        ->assertDontSee('Быстрые действия')
+        ->assertDontSee('Управление оплатой, партнерской программой и личным кабинетом автора.')
+        ->assertDontSee('Партнерская программа')
+        ->assertDontSee('Мои заказы')
+        ->assertDontSee('Здесь отображаются оформленные и оплаченные заказы.')
+        ->assertDontSee('У вас пока нет заказов.');
 });
 
 it('shows all authors on the admin authors page', function () {
@@ -193,7 +232,7 @@ it('opens a separate admin author page with full details', function () {
         'publisher_name' => 'Эксмо',
     ]);
 
-    Book::create([
+    $authorBook = Book::create([
         'book_name' => 'Анна Каренина',
         'price' => 850,
         'stock_quantity' => 4,
@@ -205,11 +244,96 @@ it('opens a separate admin author page with full details', function () {
         'id_publishers' => $publisher->getKey(),
     ]);
 
+    $otherAuthor = Author::create([
+        'author_name' => 'Федор Достоевский',
+    ]);
+
+    Book::create([
+        'book_name' => 'Идиот',
+        'price' => 780,
+        'stock_quantity' => 3,
+        'publication_date' => '1869-01-01',
+        'number_of_pages' => 520,
+        'average_rating' => 4.7,
+        'description' => 'Роман другого автора.',
+        'id_author' => $otherAuthor->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
     $this->actingAs($admin)->get(route('admin.authors.show', $author))
         ->assertOk()
         ->assertSee('Лев Толстой')
-        ->assertSee('Русский писатель и мыслитель.')
-        ->assertSee('Анна Каренина');
+        ->assertDontSee('Имя автора')
+        ->assertDontSee('Биография')
+        ->assertDontSee('Русский писатель и мыслитель.')
+        ->assertSee('Количество книг: 1')
+        ->assertSee('Анна Каренина')
+        ->assertSee(route('admin.books.edit', $authorBook), false)
+        ->assertSee('Редактировать')
+        ->assertDontSee('Идиот');
+});
+
+it('allows admin to delete an author without deleting their books', function () {
+    $adminRole = Role::create([
+        'role_name' => 'admin',
+    ]);
+
+    $authorRole = Role::create([
+        'role_name' => 'author',
+    ]);
+
+    $userRole = Role::create([
+        'role_name' => 'user',
+    ]);
+
+    $admin = User::factory()->create([
+        'id_role' => $adminRole->getKey(),
+    ]);
+
+    $authorUser = User::factory()->create([
+        'id_role' => $authorRole->getKey(),
+    ]);
+
+    $author = Author::create([
+        'id_users' => $authorUser->getKey(),
+        'author_name' => 'Удаляемый автор',
+        'biography' => 'Биография.',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Сохранённый издатель',
+    ]);
+
+    $book = Book::create([
+        'book_name' => 'Книга удаляемого автора',
+        'price' => 500,
+        'discount_percent' => 0,
+        'stock_quantity' => 2,
+        'publication_date' => '2024-05-01',
+        'number_of_pages' => 180,
+        'description' => 'Книга должна остаться.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $this->actingAs($admin)->get(route('admin.authors.show', $author))
+        ->assertOk()
+        ->assertSee('Удалить автора');
+
+    $this->actingAs($admin)->delete(route('admin.authors.destroy', $author))
+        ->assertRedirect(route('admin.authors.index'))
+        ->assertSessionHas('status', 'Автор удалён из системы.');
+
+    $this->assertDatabaseMissing('authors', [
+        'id_author' => $author->getKey(),
+    ]);
+
+    $this->assertDatabaseHas('books', [
+        'id_books' => $book->getKey(),
+        'id_author' => null,
+    ]);
+
+    expect((int) $authorUser->fresh()->id_role)->toBe((int) $userRole->getKey());
 });
 
 it('allows admin to create and update a book', function () {
@@ -262,6 +386,60 @@ it('allows admin to create and update a book', function () {
     ]);
 });
 
+it('allows admin to update books from any author', function () {
+    $adminRole = Role::create([
+        'role_name' => 'admin',
+    ]);
+
+    $admin = User::factory()->create([
+        'id_role' => $adminRole->getKey(),
+    ]);
+
+    $firstAuthor = Author::create([
+        'author_name' => 'Автор Первый',
+    ]);
+
+    $secondAuthor = Author::create([
+        'author_name' => 'Автор Второй',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Общий издатель',
+    ]);
+
+    $book = Book::create([
+        'book_name' => 'Книга второго автора',
+        'price' => 400,
+        'discount_percent' => 0,
+        'stock_quantity' => 5,
+        'publication_date' => '2024-01-01',
+        'number_of_pages' => 210,
+        'description' => 'Исходное описание.',
+        'id_author' => $secondAuthor->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $this->actingAs($admin)->put(route('admin.books.update', $book), [
+        'book_name' => 'Книга второго автора обновлена',
+        'price' => 450,
+        'discount_percent' => 5,
+        'stock_quantity' => 8,
+        'publication_date' => '2024-01-01',
+        'number_of_pages' => 210,
+        'description' => 'Админ обновил книгу независимо от автора.',
+        'id_author' => $firstAuthor->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ])->assertRedirect(route('admin.books.index'));
+
+    $this->assertDatabaseHas('books', [
+        'id_books' => $book->getKey(),
+        'book_name' => 'Книга второго автора обновлена',
+        'price' => 450,
+        'stock_quantity' => 8,
+        'id_author' => $firstAuthor->getKey(),
+    ]);
+});
+
 it('allows admin to upload a cover image for a book', function () {
     Storage::fake('public');
 
@@ -300,6 +478,68 @@ it('allows admin to upload a cover image for a book', function () {
 
     expect($book->cover_image)->not->toBeNull();
     Storage::disk('public')->assertExists($book->cover_image);
+});
+
+it('allows admin to upload and remove a digital book file', function () {
+    Storage::fake('local');
+
+    $adminRole = Role::create([
+        'role_name' => 'admin',
+    ]);
+
+    $admin = User::factory()->create([
+        'id_role' => $adminRole->getKey(),
+    ]);
+
+    $author = Author::create([
+        'author_name' => 'Николай Гоголь',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Просвещение',
+    ]);
+
+    $bookFile = UploadedFile::fake()->create('dead-souls.pdf', 32, 'application/pdf');
+
+    $this->actingAs($admin)->post(route('admin.books.store'), [
+        'book_name' => 'Мертвые души',
+        'book_file' => $bookFile,
+        'price' => 650,
+        'discount_percent' => 10,
+        'stock_quantity' => 7,
+        'publication_date' => '1842-01-01',
+        'number_of_pages' => 320,
+        'description' => 'Поэма в прозе.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ])->assertRedirect(route('admin.books.index'));
+
+    $book = Book::query()->where('book_name', 'Мертвые души')->firstOrFail();
+
+    expect($book->digital_file_path)->not->toBeNull();
+    expect($book->digital_file_original_name)->toBe('dead-souls.pdf');
+    Storage::disk('local')->assertExists($book->digital_file_path);
+
+    $oldFilePath = $book->digital_file_path;
+
+    $this->actingAs($admin)->put(route('admin.books.update', $book), [
+        'book_name' => 'Мертвые души',
+        'remove_book_file' => '1',
+        'price' => 650,
+        'discount_percent' => 10,
+        'stock_quantity' => 7,
+        'publication_date' => '1842-01-01',
+        'number_of_pages' => 320,
+        'description' => 'Поэма в прозе.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ])->assertRedirect(route('admin.books.index'));
+
+    $book->refresh();
+
+    expect($book->digital_file_path)->toBeNull();
+    expect($book->digital_file_original_name)->toBeNull();
+    Storage::disk('local')->assertMissing($oldFilePath);
 });
 
 it('allows admin to remove the preorder flag from a book', function () {
@@ -382,6 +622,48 @@ it('shows a compact orders list and opens order details for admin', function () 
         ->assertSee('Заказ №' . $order->getKey())
         ->assertSee($user->name)
         ->assertSee('Ожидает оплаты');
+});
+
+it('allows admin to delete a book', function () {
+    $adminRole = Role::create([
+        'role_name' => 'admin',
+    ]);
+
+    $admin = User::factory()->create([
+        'id_role' => $adminRole->getKey(),
+    ]);
+
+    $author = Author::create([
+        'author_name' => 'Николай Гоголь',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Просвещение',
+    ]);
+
+    $book = Book::create([
+        'book_name' => 'Мертвые души',
+        'price' => 650,
+        'discount_percent' => 10,
+        'stock_quantity' => 7,
+        'publication_date' => '1842-01-01',
+        'number_of_pages' => 320,
+        'description' => 'Поэма в прозе.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ]);
+
+    $this->actingAs($admin)->get(route('admin.books.index'))
+        ->assertOk()
+        ->assertSee('Удалить');
+
+    $this->actingAs($admin)->delete(route('admin.books.destroy', $book))
+        ->assertRedirect(route('admin.books.index'))
+        ->assertSessionHas('status', 'Книга удалена.');
+
+    $this->assertDatabaseMissing('books', [
+        'id_books' => $book->getKey(),
+    ]);
 });
 
 it('prevents deleting a book that exists in customer orders', function () {

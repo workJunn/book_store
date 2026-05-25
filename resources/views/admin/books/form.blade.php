@@ -50,6 +50,26 @@
                     </div>
 
                     <div class="form-group">
+                        <label for="book_file">Файл книги</label>
+                        <input id="book_file" name="book_file" type="file" accept=".pdf,.epub,.fb2,.txt">
+                        @error('book_file')
+                            <div class="error-message">{{ $message }}</div>
+                        @enderror
+                        @error('remove_book_file')
+                            <div class="error-message">{{ $message }}</div>
+                        @enderror
+                        @if($book->digital_file_path)
+                            <div class="stack-sm">
+                                <div class="muted">Загружен файл: {{ $book->digital_file_original_name }}</div>
+                                <label class="checkbox-row">
+                                    <input type="checkbox" name="remove_book_file" value="1" @checked(old('remove_book_file'))>
+                                    <span>Удалить текущий файл книги</span>
+                                </label>
+                            </div>
+                        @endif
+                    </div>
+
+                    <div class="form-group">
                         <label for="price">Цена</label>
                         <input id="price" name="price" type="number" step="0.01" min="0" value="{{ old('price', $book->price) }}">
                     </div>

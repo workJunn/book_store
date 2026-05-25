@@ -495,6 +495,34 @@ function closeDeleteUserModal() {
     }
 }
 
+function openDeleteAuthorModal() {
+    const modal = document.getElementById('delete-author-modal');
+
+    if (!modal) {
+        return;
+    }
+
+    lastFocusedElement = document.activeElement;
+    modal.classList.add('is-open');
+    modal.setAttribute('aria-hidden', 'false');
+    modal.querySelector('.checkout-dialog')?.focus();
+}
+
+function closeDeleteAuthorModal() {
+    const modal = document.getElementById('delete-author-modal');
+
+    if (!modal) {
+        return;
+    }
+
+    modal.classList.remove('is-open');
+    modal.setAttribute('aria-hidden', 'true');
+
+    if (lastFocusedElement instanceof HTMLElement) {
+        lastFocusedElement.focus();
+    }
+}
+
 function openTopUpModal() {
     const modal = document.getElementById('topup-modal');
 
@@ -944,6 +972,16 @@ document.addEventListener('click', (event) => {
         return;
     }
 
+    if (event.target.closest('[data-open-author-delete]')) {
+        openDeleteAuthorModal();
+        return;
+    }
+
+    if (event.target.closest('[data-close-author-delete]')) {
+        closeDeleteAuthorModal();
+        return;
+    }
+
     if (event.target.closest('[data-open-topup]')) {
         openTopUpModal();
         return;
@@ -963,6 +1001,12 @@ document.addEventListener('click', (event) => {
     const deleteUserModal = document.getElementById('delete-user-modal');
     if (deleteUserModal && event.target === deleteUserModal) {
         closeDeleteUserModal();
+        return;
+    }
+
+    const deleteAuthorModal = document.getElementById('delete-author-modal');
+    if (deleteAuthorModal && event.target === deleteAuthorModal) {
+        closeDeleteAuthorModal();
         return;
     }
 
@@ -986,15 +1030,18 @@ document.addEventListener('submit', (event) => {
 document.addEventListener('keydown', (event) => {
     const modal = document.getElementById('checkout-modal');
     const deleteUserModal = document.getElementById('delete-user-modal');
+    const deleteAuthorModal = document.getElementById('delete-author-modal');
     const topUpModal = document.getElementById('topup-modal');
 
     const activeModal = modal?.classList.contains('is-open')
         ? modal
         : deleteUserModal?.classList.contains('is-open')
             ? deleteUserModal
-            : topUpModal?.classList.contains('is-open')
-                ? topUpModal
-            : null;
+            : deleteAuthorModal?.classList.contains('is-open')
+                ? deleteAuthorModal
+                : topUpModal?.classList.contains('is-open')
+                    ? topUpModal
+                : null;
 
     if (!activeModal) {
         return;
@@ -1005,6 +1052,8 @@ document.addEventListener('keydown', (event) => {
             closeCheckoutModal();
         } else if (activeModal === topUpModal) {
             closeTopUpModal();
+        } else if (activeModal === deleteAuthorModal) {
+            closeDeleteAuthorModal();
         } else {
             closeDeleteUserModal();
         }
