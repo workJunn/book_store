@@ -19,7 +19,7 @@ class BookController extends Controller
     public function welcome()
     {
         return view('welcome', [
-            'featuredBooks' => $this->getFeaturedBooks(),
+            'genreSlides' => $this->buildGenreSlides(),
             'newArrivals' => $this->buildNewArrivals(),
             'shelves' => $this->buildShelves(),
             'quickRankings' => $this->buildQuickRankings(),
@@ -300,6 +300,71 @@ class BookController extends Controller
             ->get();
     }
 
+    private function buildGenreSlides(): Collection
+    {
+        $usedBookIds = [];
+
+        return Genre::query()
+            ->whereHas('books')
+            ->with(['books' => function ($query): void {
+                $query
+                    ->with(['author', 'publisher', 'genres'])
+                    ->orderByDesc('average_rating')
+                    ->orderBy('book_name');
+            }])
+            ->withCount('books')
+            ->orderByDesc('books_count')
+            ->orderBy('genre_name')
+            ->get()
+            ->map(function (Genre $genre) use (&$usedBookIds) {
+                $books = $genre->books
+                    ->reject(fn (Book $book) => in_array((int) $book->getKey(), $usedBookIds, true))
+                    ->take(2)
+                    ->values();
+
+                foreach ($books as $book) {
+                    $usedBookIds[] = (int) $book->getKey();
+                }
+
+                return [
+                    'genre' => $genre,
+                    'title' => $genre->genre_name,
+                    'description' => $this->describeGenre($genre->genre_name),
+                    'books' => $books,
+                ];
+            })
+            ->filter(fn (array $slide) => $slide['books']->isNotEmpty())
+            ->take(5)
+            ->values();
+    }
+
+    private function describeGenre(string $genreName): string
+    {
+        $name = mb_strtolower($genreName);
+
+        if (str_contains($name, 'науч') || str_contains($name, 'science')) {
+            return 'Понятные книги о знаниях, идеях и исследованиях для тех, кто любит разбираться в устройстве мира. В таких книгах важны ясные объяснения, сильные примеры и ощущение, что сложная тема становится ближе. Это хороший выбор для читателей, которые хотят не просто провести время, а узнать что-то новое.';
+        }
+
+        if (str_contains($name, 'фантаст') || str_contains($name, 'fantasy')) {
+            return 'Истории о необычных мирах, технологиях, будущем и открытиях, которые расширяют границы привычного. Здесь можно встретить далёкие планеты, альтернативные реальности и героев, которым приходится принимать решения в непривычных обстоятельствах. Жанр хорошо подходит тем, кто любит масштаб, воображение и неожиданные идеи.';
+        }
+
+        if (str_contains($name, 'роман') || str_contains($name, 'fiction')) {
+            return 'Большие человеческие истории о выборе, чувствах, переменах и событиях, которые остаются с читателем надолго. В центре таких книг обычно стоят отношения, личные испытания и моменты, после которых герои уже не могут оставаться прежними. Это жанр для спокойного, внимательного чтения и сильного эмоционального погружения.';
+        }
+
+        if (str_contains($name, 'детектив') || str_contains($name, 'mystery')) {
+            return 'Запутанные сюжеты, скрытые мотивы и расследования, где каждая деталь может оказаться ключевой. Детективы держат внимание за счёт вопросов, подозрений и постепенного раскрытия правды. Такие книги особенно хорошо подходят, когда хочется следить за логикой событий и собирать разгадку вместе с героями.';
+        }
+
+        if (str_contains($name, 'истор') || str_contains($name, 'history')) {
+            return 'Книги о событиях, эпохах и людях прошлого, помогающие увидеть знакомый мир в более широком контексте. В них важны атмосфера времени, детали быта и связь личных судеб с большими переменами. Такой жанр позволяет читать не только о фактах, но и о том, как прошлое влияет на людей.';
+        }
+
+        return 'Подборка книг жанра, в котором легко найти новое чтение под настроение и открыть для себя сильных авторов. Здесь собраны разные истории: от лёгких и быстрых до более плотных и вдумчивых. Начните с нескольких заметных книг жанра, чтобы понять его ритм и выбрать направление для следующего чтения.';
+    }
+
     private function buildQuickRankings(): Collection
     {
         return collect([
@@ -351,15 +416,6 @@ class BookController extends Controller
     private function baseBookQuery(): Builder
     {
         return Book::query()->with(['author', 'publisher', 'genres']);
-    }
-
-    private function getFeaturedBooks(): Collection
-    {
-        return $this->baseBookQuery()
-            ->orderByDesc('average_rating')
-            ->orderBy('book_name')
-            ->limit(2)
-            ->get();
     }
 
     private function fetchShelfBooks(callable $constraint, ?callable $fallbackOrder = null, int $limit = 10): Collection

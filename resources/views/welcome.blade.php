@@ -12,34 +12,37 @@
 
     <main class="site-main">
         <section class="container stack-lg">
-            <section class="hero-simple">
-                <div class="stack-md">
-                    <p class="eyebrow">Онлайн-магазин книг</p>
-                    <h1 class="hero-simple__title hero-simple__title--compact">Книги без лишнего шума</h1>
-                    <p class="hero-simple__text">
-                        Удобный книжный магазин с продуманным каталогом, быстрым поиском, честными
-                        отзывами и простой покупкой. Здесь легко находить интересные книги, сравнивать
-                        издания и оформлять заказ без лишних шагов.
-                    </p>
-                </div>
+            <section class="genre-showcase" data-genre-showcase>
+                <div class="genre-showcase__viewport" data-genre-showcase-viewport>
+                    <div class="genre-showcase__track" data-genre-showcase-track>
+                        @foreach($genreSlides as $slide)
+                            <article class="hero-simple genre-showcase__slide" data-genre-showcase-slide>
+                                <div class="stack-md">
+                                    <h1 class="hero-simple__title hero-simple__title--compact">{{ $slide['title'] }}</h1>
+                                    <p class="hero-simple__text">{{ $slide['description'] }}</p>
+                                </div>
 
-                <div class="simple-grid simple-grid--2">
-                    @foreach($featuredBooks as $book)
-                        <article class="card">
-                            <a href="{{ route('books.show', $book->getKey()) }}" class="card__image-link">
-                                <img
-                                    src="{{ $book->cover_image_url }}"
-                                    class="card__image"
-                                    alt="{{ $book->book_name }}"
-                                >
-                            </a>
-                            <div class="card__body">
-                                <div class="muted">Рейтинг {{ number_format((float) $book->average_rating, 2, '.', ' ') }}</div>
-                                <a href="{{ route('books.show', $book->getKey()) }}" class="card__title">{{ $book->book_name }}</a>
-                                <div class="muted">{{ $book->author->author_name ?? 'Не указан' }}</div>
-                            </div>
-                        </article>
-                    @endforeach
+                                <div class="simple-grid simple-grid--2">
+                                    @foreach($slide['books'] as $book)
+                                        <article class="card">
+                                            <a href="{{ route('books.show', $book->getKey()) }}" class="card__image-link">
+                                                <img
+                                                    src="{{ $book->cover_image_url }}"
+                                                    class="card__image"
+                                                    alt="{{ $book->book_name }}"
+                                                >
+                                            </a>
+                                            <div class="card__body">
+                                                <div class="muted">Рейтинг {{ number_format((float) $book->average_rating, 2, '.', ' ') }}</div>
+                                                <a href="{{ route('books.show', $book->getKey()) }}" class="card__title">{{ $book->book_name }}</a>
+                                                <div class="muted">{{ $book->author->author_name ?? 'Не указан' }}</div>
+                                            </div>
+                                        </article>
+                                    @endforeach
+                                </div>
+                            </article>
+                        @endforeach
+                    </div>
                 </div>
             </section>
 

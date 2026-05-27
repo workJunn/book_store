@@ -20,7 +20,7 @@
                     </div>
                     @if($user->isAdmin())
                         @include('partials.admin-search')
-                        @include('partials.admin-nav')
+                        <a href="{{ route('admin.index') }}" class="btn btn-secondary">Админ панель</a>
                     @else
                         <div class="status-badge {{ $user->email_verified_at ? 'status-badge--ok' : 'status-badge--warn' }}">
                             {{ $user->email_verified_at ? 'Email подтверждён' : 'Email не подтверждён' }}

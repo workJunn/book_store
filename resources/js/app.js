@@ -614,6 +614,58 @@ async function clearCart(withConfirmation = true) {
     }
 }
 
+async function deleteAdminBook(form) {
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton?.textContent;
+    const bookCard = form.closest('[data-admin-book-card]');
+
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Удаление...';
+    }
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': token,
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: new FormData(form),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+            showFlashMessage(data.message || 'Не удалось удалить книгу', 'error');
+            return;
+        }
+
+        bookCard?.remove();
+
+        const booksCount = document.querySelector('[data-admin-books-count]');
+        if (booksCount) {
+            const nextCount = Math.max(0, Number(booksCount.textContent || 0) - 1);
+            booksCount.textContent = nextCount;
+        }
+
+        const booksList = document.querySelector('[data-admin-books-list]');
+        if (booksList && !booksList.querySelector('[data-admin-book-card]')) {
+            booksList.innerHTML = '<div class="empty-state">Книг пока нет.</div>';
+        }
+
+        showFlashMessage(data.message || 'Книга удалена.');
+    } catch (error) {
+        showFlashMessage('Ошибка сервера', 'error');
+    } finally {
+        if (submitButton && document.contains(submitButton)) {
+            submitButton.disabled = false;
+            submitButton.textContent = originalButtonText;
+        }
+    }
+}
+
 async function confirmCheckout() {
     try {
         const data = await postJson('/cart/checkout');
@@ -669,6 +721,106 @@ function getShelfPageSize() {
     }
 
     return 5;
+}
+
+function initGenreShowcase() {
+    const showcase = document.querySelector('[data-genre-showcase]');
+
+    if (!showcase) {
+        return;
+    }
+
+    const viewport = showcase.querySelector('[data-genre-showcase-viewport]');
+    const track = showcase.querySelector('[data-genre-showcase-track]');
+    const slides = Array.from(showcase.querySelectorAll('[data-genre-showcase-slide]'));
+
+    if (!viewport || !track || slides.length <= 1) {
+        return;
+    }
+
+    const firstClone = slides[0].cloneNode(true);
+    const lastClone = slides[slides.length - 1].cloneNode(true);
+    let currentIndex = 1;
+    let autoplayId = null;
+    let isAnimating = false;
+    let touchStartX = null;
+    let touchCurrentX = null;
+
+    firstClone.setAttribute('aria-hidden', 'true');
+    lastClone.setAttribute('aria-hidden', 'true');
+    track.insertBefore(lastClone, slides[0]);
+    track.appendChild(firstClone);
+
+    const setTrackPosition = (withTransition = true) => {
+        track.classList.toggle('is-resetting', !withTransition);
+        track.style.transform = `translateX(-${currentIndex * 100}%)`;
+
+        if (!withTransition) {
+            isAnimating = false;
+            track.classList.remove('is-sliding');
+            void track.offsetWidth;
+            track.classList.remove('is-resetting');
+        }
+    };
+
+    const move = (direction) => {
+        if (isAnimating) {
+            return;
+        }
+
+        isAnimating = true;
+        currentIndex += direction;
+        track.classList.add('is-sliding');
+        setTrackPosition(true);
+    };
+
+    const restartAutoplay = () => {
+        window.clearInterval(autoplayId);
+        autoplayId = window.setInterval(() => move(1), 15000);
+    };
+
+    track.addEventListener('transitionend', () => {
+        isAnimating = false;
+        track.classList.remove('is-sliding');
+
+        if (currentIndex === 0) {
+            currentIndex = slides.length;
+            setTrackPosition(false);
+        } else if (currentIndex === slides.length + 1) {
+            currentIndex = 1;
+            setTrackPosition(false);
+        }
+    });
+
+    viewport.addEventListener('touchstart', (event) => {
+        touchStartX = event.touches[0]?.clientX ?? null;
+        touchCurrentX = touchStartX;
+    }, { passive: true });
+
+    viewport.addEventListener('touchmove', (event) => {
+        touchCurrentX = event.touches[0]?.clientX ?? touchCurrentX;
+    }, { passive: true });
+
+    viewport.addEventListener('touchend', () => {
+        if (touchStartX === null || touchCurrentX === null) {
+            touchStartX = null;
+            touchCurrentX = null;
+            return;
+        }
+
+        const deltaX = touchCurrentX - touchStartX;
+
+        if (Math.abs(deltaX) >= 40) {
+            move(deltaX < 0 ? 1 : -1);
+            restartAutoplay();
+        }
+
+        touchStartX = null;
+        touchCurrentX = null;
+    }, { passive: true });
+
+    setTrackPosition(false);
+    restartAutoplay();
 }
 
 function initBookShelves() {
@@ -874,45 +1026,21 @@ function initPasswordToggles() {
             return;
         }
 
-        const showPassword = () => {
-            input.type = 'text';
-            button.setAttribute('aria-pressed', 'true');
+        const syncPasswordState = (isVisible) => {
+            input.type = isVisible ? 'text' : 'password';
+            button.setAttribute('aria-pressed', isVisible ? 'true' : 'false');
         };
 
-        const hidePassword = () => {
-            input.type = 'password';
-            button.setAttribute('aria-pressed', 'false');
-        };
-
-        button.addEventListener('pointerdown', (event) => {
-            event.preventDefault();
-            showPassword();
+        button.addEventListener('click', () => {
+            syncPasswordState(input.type === 'password');
         });
-
-        button.addEventListener('pointerup', hidePassword);
-        button.addEventListener('pointerleave', hidePassword);
-        button.addEventListener('pointercancel', hidePassword);
-
-        button.addEventListener('keydown', (event) => {
-            if (event.key === ' ' || event.key === 'Enter') {
-                event.preventDefault();
-                showPassword();
-            }
-        });
-
-        button.addEventListener('keyup', (event) => {
-            if (event.key === ' ' || event.key === 'Enter') {
-                hidePassword();
-            }
-        });
-
-        button.addEventListener('blur', hidePassword);
     });
 }
 
 updateFavoritesCount();
 syncFavoriteButtons();
 renderFavoritesPage();
+initGenreShowcase();
 initBookShelves();
 initReviewsHub();
 initPasswordToggles();
@@ -1017,6 +1145,13 @@ document.addEventListener('click', (event) => {
 });
 
 document.addEventListener('submit', (event) => {
+    const adminBookDeleteForm = event.target.closest('[data-admin-book-delete-form]');
+    if (adminBookDeleteForm) {
+        event.preventDefault();
+        deleteAdminBook(adminBookDeleteForm);
+        return;
+    }
+
     const reviewForm = event.target.closest('[data-review-form]');
 
     if (!reviewForm) {

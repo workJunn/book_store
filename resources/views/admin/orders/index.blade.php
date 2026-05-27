@@ -8,24 +8,28 @@
 </head>
 <body class="page-shell page-shell--column admin-page" data-home-url="{{ route('home') }}">
     <main class="site-main">
-        <section class="container stack-lg">
-            @include('partials.admin-page-head', ['title' => 'Заказы'])
+        <section class="container stack-lg admin-layout">
+            @include('partials.admin-sidebar')
 
-            @if(session('status'))
-                <div class="success-box">{{ session('status') }}</div>
-            @endif
+            <div class="admin-layout__content stack-lg">
+                @include('partials.admin-page-head', ['title' => 'Заказы'])
 
-            <section class="stack-md">
-                @foreach($orders as $order)
-                    <article class="info-box stack-sm">
-                        <div class="order-line">
-                            <a href="{{ route('admin.orders.show', $order) }}" class="text-link">Заказ №{{ $order->getKey() }}</a>
-                            <span>{{ $order->user->name ?? 'Пользователь' }}</span>
-                            <span>{{ $order->order_date ? $order->order_date->format('d.m.Y H:i') : 'Дата не указана' }}</span>
-                        </div>
-                    </article>
-                @endforeach
-            </section>
+                @if(session('status'))
+                    <div class="success-box">{{ session('status') }}</div>
+                @endif
+
+                <section class="stack-md">
+                    @foreach($orders as $order)
+                        <article class="info-box stack-sm">
+                            <div class="order-line">
+                                <a href="{{ route('admin.orders.show', $order) }}" class="text-link">Заказ №{{ $order->getKey() }}</a>
+                                <span>{{ $order->user->name ?? 'Пользователь' }}</span>
+                                <span>{{ $order->order_date ? $order->order_date->format('d.m.Y H:i') : 'Дата не указана' }}</span>
+                            </div>
+                        </article>
+                    @endforeach
+                </section>
+            </div>
         </section>
     </main>
 </body>

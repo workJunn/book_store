@@ -38,15 +38,35 @@ it('allows only admins to open the admin panel', function () {
         'id_role' => $userRole->getKey(),
     ]);
 
-    $this->actingAs($admin)->get(route('admin.index'))
+    $response = $this->actingAs($admin)->get(route('admin.index'));
+
+    $response
         ->assertOk()
         ->assertSee('Админ панель')
         ->assertSee(route('admin.index'), false)
+        ->assertSee(route('admin.books.index'), false)
+        ->assertSee('На главную')
+        ->assertSee(route('home'), false)
+        ->assertSee(route('admin.search'), false)
+        ->assertSee('Поиск: пользователи, авторы, книги')
+        ->assertDontSee('Последние заказы')
+        ->assertDontSee('Быстрый обзор последних заказов в системе.')
         ->assertDontSee('Профиль')
         ->assertDontSee('Партнеры')
         ->assertDontSee('Назад')
         ->assertSee('Выйти')
         ->assertSee(route('logout'), false);
+
+    $content = $response->getContent();
+
+    expect(strpos($content, '>Админ панель</a>'))
+        ->toBeLessThan(strpos($content, '>Пользователи</a>'))
+        ->and(strpos($content, '>Пользователи</a>'))
+        ->toBeLessThan(strpos($content, '>Заказы</a>'))
+        ->and(strpos($content, '>Заказы</a>'))
+        ->toBeLessThan(strpos($content, '>Авторы</a>'))
+        ->and(strpos($content, '>Авторы</a>'))
+        ->toBeLessThan(strpos($content, '>Книги</a>'));
 
     $this->actingAs($user)->get(route('admin.index'))
         ->assertForbidden();
@@ -68,6 +88,8 @@ it('does not show customer dashboard sections to admin users', function () {
 
     $this->actingAs($admin)->get(route('dashboard'))
         ->assertOk()
+        ->assertSee('Админ панель')
+        ->assertSee(route('admin.index'), false)
         ->assertDontSee('Телефон')
         ->assertDontSee('+79990000001')
         ->assertDontSee('Баланс')
@@ -266,10 +288,13 @@ it('opens a separate admin author page with full details', function () {
         ->assertDontSee('Имя автора')
         ->assertDontSee('Биография')
         ->assertDontSee('Русский писатель и мыслитель.')
-        ->assertSee('Количество книг: 1')
+        ->assertSee('Количество книг:')
+        ->assertSee('data-admin-books-count', false)
         ->assertSee('Анна Каренина')
         ->assertSee(route('admin.books.edit', $authorBook), false)
+        ->assertSee(route('admin.books.destroy', $authorBook), false)
         ->assertSee('Редактировать')
+        ->assertSee('Удалить')
         ->assertDontSee('Идиот');
 });
 
@@ -542,6 +567,39 @@ it('allows admin to upload and remove a digital book file', function () {
     Storage::disk('local')->assertMissing($oldFilePath);
 });
 
+it('shows a clear validation error when admin uploads a too large digital book file', function () {
+    $adminRole = Role::create([
+        'role_name' => 'admin',
+    ]);
+
+    $admin = User::factory()->create([
+        'id_role' => $adminRole->getKey(),
+    ]);
+
+    $author = Author::create([
+        'author_name' => 'Лев Толстой',
+    ]);
+
+    $publisher = Publisher::create([
+        'publisher_name' => 'Русская классика',
+    ]);
+
+    $largeBookFile = UploadedFile::fake()->create('anna-karenina.pdf', 6144, 'application/pdf');
+
+    $this->actingAs($admin)->post(route('admin.books.store'), [
+        'book_name' => 'Анна Каренина',
+        'book_file' => $largeBookFile,
+        'price' => 850,
+        'discount_percent' => 0,
+        'stock_quantity' => 4,
+        'publication_date' => '1877-01-01',
+        'number_of_pages' => 640,
+        'description' => 'Роман.',
+        'id_author' => $author->getKey(),
+        'id_publishers' => $publisher->getKey(),
+    ])->assertSessionHasErrors('book_file');
+});
+
 it('allows admin to remove the preorder flag from a book', function () {
     $adminRole = Role::create([
         'role_name' => 'admin',
@@ -655,18 +713,24 @@ it('allows admin to delete a book', function () {
 
     $this->actingAs($admin)->get(route('admin.books.index'))
         ->assertOk()
-        ->assertSee('Удалить');
+        ->assertSee('Удалить')
+        ->assertSee('data-admin-book-card', false)
+        ->assertSee('data-admin-book-delete-form', false);
 
-    $this->actingAs($admin)->delete(route('admin.books.destroy', $book))
-        ->assertRedirect(route('admin.books.index'))
-        ->assertSessionHas('status', 'Книга удалена.');
+    $this->actingAs($admin)->deleteJson(route('admin.books.destroy', $book))
+        ->assertOk()
+        ->assertJson([
+            'success' => true,
+            'message' => 'Книга удалена.',
+            'book_id' => $book->getKey(),
+        ]);
 
     $this->assertDatabaseMissing('books', [
         'id_books' => $book->getKey(),
     ]);
 });
 
-it('prevents deleting a book that exists in customer orders', function () {
+it('allows admin to delete a book that exists in customer orders', function () {
     $adminRole = Role::create([
         'role_name' => 'admin',
     ]);
@@ -711,9 +775,19 @@ it('prevents deleting a book that exists in customer orders', function () {
 
     $this->actingAs($admin)->delete(route('admin.books.destroy', $book))
         ->assertRedirect(route('admin.books.index'))
-        ->assertSessionHas('status', 'Книгу нельзя удалить, пока она присутствует в оформленных или оплаченных заказах.');
+        ->assertSessionHas('status', 'Книга удалена.');
 
-    $this->assertDatabaseHas('books', [
+    $this->assertDatabaseMissing('books', [
+        'id_books' => $book->getKey(),
+    ]);
+
+    $this->assertDatabaseHas('orders', [
+        'id_orders' => $order->getKey(),
+        'status' => 'Оплачен',
+    ]);
+
+    $this->assertDatabaseMissing('orders_details', [
+        'id_orders' => $order->getKey(),
         'id_books' => $book->getKey(),
     ]);
 });

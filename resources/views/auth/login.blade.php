@@ -11,21 +11,20 @@
 
     <main class="site-main">
         <section class="auth-card stack-md">
-            <div>
+            <div class="auth-card__head">
                 <h1 class="section-title">Вход</h1>
-                <p class="section-text">Войдите в свой аккаунт.</p>
             </div>
 
             @if (session('status'))
                 <div class="success-message">{{ session('status') }}</div>
             @endif
 
-            <form method="POST" action="{{ route('login') }}" autocomplete="off" novalidate>
+            <form method="POST" action="{{ route('login') }}" autocomplete="off" novalidate class="stack-md">
                 @csrf
 
                 <div class="form-group {{ $errors->has('email') ? 'error' : '' }}">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" value="{{ old('email') }}" required autofocus>
+                    <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="ivan@example.com" required autofocus>
                     @error('email')
                         <span class="error-message">{{ $message }}</span>
                     @enderror
@@ -34,12 +33,12 @@
                 <div class="form-group {{ $errors->has('password') ? 'error' : '' }}">
                     <label for="password">Пароль</label>
                     <div class="password-field">
-                        <input type="password" id="password" name="password" required data-password-input>
+                        <input type="password" id="password" name="password" placeholder="Ваш пароль" required data-password-input>
                         <button
                             type="button"
                             class="password-toggle"
                             data-password-toggle
-                            aria-label="Удерживайте, чтобы показать пароль"
+                            aria-label="Показать или скрыть пароль"
                             aria-controls="password"
                             aria-pressed="false"
                         >

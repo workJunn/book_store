@@ -8,7 +8,9 @@
 </head>
 <body class="page-shell page-shell--column admin-page" data-home-url="{{ route('home') }}">
     <main class="site-main">
-        <section class="container">
+        <section class="container admin-layout">
+            @include('partials.admin-sidebar')
+
             <section class="auth-card stack-md">
                 <div class="section-head">
                     <div>

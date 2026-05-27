@@ -24,7 +24,7 @@ class ForgotPasswordController extends Controller
 
         Password::sendResetLink($request->only('email'));
 
-        return back()->with('status', 'Если такой email существует, ссылка для сброса уже отправлена.');
+        return back()->with('status', 'Ссылка для сброса пароля отправлена.');
     }
 }
  

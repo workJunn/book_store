@@ -7,7 +7,7 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="page-shell auth-page" data-home-url="{{ route('home') }}">
-    @include('partials.site-header', ['showNav' => false, 'showFavorites' => false, 'showCart' => false, 'showAuthButtons' => false, 'showProfile' => false])
+    @include('partials.site-header', ['showNav' => false, 'showSearch' => false, 'showFavorites' => false, 'showCart' => false, 'showAuthButtons' => false, 'showProfile' => false])
 
     <main class="site-main">
         <section class="auth-card stack-md">
@@ -16,7 +16,7 @@
                 <p class="section-text">Введите email и задайте новый пароль.</p>
             </div>
 
-            <form method="POST" action="{{ route('password.update') }}" autocomplete="off" novalidate>
+            <form method="POST" action="{{ route('password.update') }}" autocomplete="off" novalidate class="stack-md">
                 @csrf
                 <input type="hidden" name="token" value="{{ $token }}">
 

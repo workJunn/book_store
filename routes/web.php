@@ -130,3 +130,5 @@ Route::get('/admin/orders', [AdminController::class, 'orders'])
 Route::get('/admin/orders/{order}', [AdminController::class, 'showOrder'])
     ->middleware(['auth', 'admin'])
     ->name('admin.orders.show');
+
+    

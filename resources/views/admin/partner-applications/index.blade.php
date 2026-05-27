@@ -8,7 +8,9 @@
 </head>
 <body class="page-shell page-shell--column admin-page" data-home-url="{{ route('home') }}">
     <main class="site-main">
-        <section class="container stack-lg">
+        <section class="container stack-lg admin-layout">
+            @include('partials.admin-sidebar')
+
             @include('partials.admin-page-head', ['title' => 'Партнерские заявки', 'showSearch' => false])
 
             @if(session('status'))

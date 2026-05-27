@@ -309,18 +309,14 @@ class AdminController extends Controller
             ->with('status', 'Книга обновлена.');
     }
 
-    public function destroyBook(Book $book)
+    public function destroyBook(Request $request, Book $book)
     {
-        if ($book->orderDetails()->exists()) {
-            return redirect()
-                ->route('admin.books.index')
-                ->with('status', 'Книгу нельзя удалить, пока она присутствует в оформленных или оплаченных заказах.');
-        }
-
+        $bookId = (int) $book->getKey();
         $coverImagePath = $book->cover_image;
         $digitalFilePath = $book->digital_file_path;
 
         DB::transaction(function () use ($book) {
+            $book->orderDetails()->delete();
             $book->reviews()->delete();
             $book->genres()->detach();
             $book->delete();
@@ -328,6 +324,14 @@ class AdminController extends Controller
 
         $this->deleteCoverImage($coverImagePath);
         $this->deleteDigitalBookFile($digitalFilePath);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Книга удалена.',
+                'book_id' => $bookId,
+            ]);
+        }
 
         return redirect()
             ->route('admin.books.index')
@@ -357,11 +361,14 @@ class AdminController extends Controller
 
     private function validateBook(Request $request): array
     {
+        $bookFileMaxKilobytes = $this->maxUploadedFileKilobytes();
+        $bookFileMaxMegabytes = max(1, (int) floor($bookFileMaxKilobytes / 1024));
+
         return $request->validate([
             'book_name' => ['required', 'string', 'max:200'],
             'cover' => ['nullable', 'image', 'max:5120'],
             'remove_cover_image' => ['nullable', 'boolean'],
-            'book_file' => ['nullable', 'file', 'mimes:pdf,epub,fb2,txt', 'max:51200'],
+            'book_file' => ['nullable', 'file', 'mimes:pdf,epub,fb2,txt', 'max:'.$bookFileMaxKilobytes],
             'remove_book_file' => ['nullable', 'boolean'],
             'price' => ['required', 'numeric', 'min:0'],
             'discount_percent' => ['required', 'integer', 'between:0,95'],
@@ -374,7 +381,33 @@ class AdminController extends Controller
             'is_preorder' => ['nullable', 'boolean'],
             'genre_ids' => ['nullable', 'array'],
             'genre_ids.*' => ['exists:genres,id_genre'],
+        ], [
+            'book_file.uploaded' => "Файл книги слишком большой. Текущий лимит сервера: {$bookFileMaxMegabytes} МБ.",
+            'book_file.max' => "Файл книги не должен превышать {$bookFileMaxMegabytes} МБ.",
+            'book_file.mimes' => 'Файл книги должен быть в формате PDF, EPUB, FB2 или TXT.',
         ]);
+    }
+
+    private function maxUploadedFileKilobytes(): int
+    {
+        $uploadLimit = $this->phpIniSizeToKilobytes((string) ini_get('upload_max_filesize'));
+        $postLimit = $this->phpIniSizeToKilobytes((string) ini_get('post_max_size'));
+
+        return max(1, min($uploadLimit, $postLimit));
+    }
+
+    private function phpIniSizeToKilobytes(string $value): int
+    {
+        $value = trim($value);
+        $unit = strtolower(substr($value, -1));
+        $number = (float) $value;
+
+        return (int) match ($unit) {
+            'g' => $number * 1024 * 1024,
+            'm' => $number * 1024,
+            'k' => $number,
+            default => max(1, $number / 1024),
+        };
     }
 
     private function storeCoverImage(Request $request): ?string

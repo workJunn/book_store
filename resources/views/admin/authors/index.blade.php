@@ -8,28 +8,32 @@
 </head>
 <body class="page-shell page-shell--column admin-page" data-home-url="{{ route('home') }}">
     <main class="site-main">
-        <section class="container stack-lg">
-            @include('partials.admin-page-head', ['title' => 'Авторы'])
+        <section class="container stack-lg admin-layout">
+            @include('partials.admin-sidebar')
 
-            <section class="stack-md">
-                <div>
-                    <h2 class="subheading">Авторы</h2>
-                </div>
+            <div class="admin-layout__content stack-lg">
+                @include('partials.admin-page-head', ['title' => 'Авторы'])
 
-                @forelse($authors as $author)
-                    <article class="info-box stack-sm">
-                        <div class="order-line">
-                            <a href="{{ route('admin.authors.show', $author) }}" class="text-link">{{ $author->author_name }}</a>
-                            <span>{{ $author->user?->email ?? 'Email не указан' }}</span>
-                            <span>Книг автора: {{ $author->books_count }}</span>
-                        </div>
-                    </article>
-                @empty
-                    <div class="empty-state">
-                        Авторов пока нет.
+                <section class="stack-md">
+                    <div>
+                        <h2 class="subheading">Авторы</h2>
                     </div>
-                @endforelse
-            </section>
+
+                    @forelse($authors as $author)
+                        <article class="info-box stack-sm">
+                            <div class="order-line">
+                                <a href="{{ route('admin.authors.show', $author) }}" class="text-link">{{ $author->author_name }}</a>
+                                <span>{{ $author->user?->email ?? 'Email не указан' }}</span>
+                                <span>Книг автора: {{ $author->books_count }}</span>
+                            </div>
+                        </article>
+                    @empty
+                        <div class="empty-state">
+                            Авторов пока нет.
+                        </div>
+                    @endforelse
+                </section>
+            </div>
         </section>
     </main>
 </body>

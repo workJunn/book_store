@@ -8,55 +8,59 @@
 </head>
 <body class="page-shell page-shell--column admin-page" data-home-url="{{ route('home') }}">
     <main class="site-main">
-        <section class="container stack-lg">
-            <section class="section-head">
-                <div>
-                    <h1 class="section-title">{{ $author->author_name }}</h1>
-                    <p class="section-text">Подробные данные автора.</p>
-                </div>
-                <a href="{{ route('admin.authors.index') }}" class="btn btn-secondary">Назад</a>
-            </section>
+        <section class="container stack-lg admin-layout">
+            @include('partials.admin-sidebar')
 
-            @if($partnerApplication)
-                <section class="stack-md">
-                    <div class="info-box stack-md">
-                        <div class="simple-grid simple-grid--2">
-                            <div class="stack-sm">
-                                <div><strong>Email:</strong> {{ $partnerApplication->user?->email ?? $author->user?->email ?? 'Email не указан' }}</div>
-                                <div><strong>Статус:</strong> {{ $partnerApplication->status === 'approved' ? 'Подтверждена' : 'Ожидает подтверждения' }}</div>
-                                <div><strong>Выплаты:</strong> {{ match($partnerApplication->payment_method) {
-                                    'card' => 'Карта',
-                                    'sbp' => 'СБП',
-                                    default => 'QR-код',
-                                } }}</div>
-                                <div><strong>Дата заявки:</strong> {{ $partnerApplication->created_at?->format('d.m.Y H:i') }}</div>
-                                @if($partnerApplication->processed_at)
-                                    <div><strong>Подтверждена:</strong> {{ $partnerApplication->processed_at->format('d.m.Y H:i') }}</div>
-                                @endif
-                            </div>
-                            <div class="stack-sm">
-                                @if($partnerApplication->experience_summary)
-                                    <div><strong>Опыт:</strong> {{ $partnerApplication->experience_summary }}</div>
-                                @endif
-                                @if($partnerApplication->portfolio_url)
-                                    <div><strong>Портфолио:</strong> <a href="{{ $partnerApplication->portfolio_url }}" class="text-link">{{ $partnerApplication->portfolio_url }}</a></div>
-                                @endif
+            <div class="admin-detail-overview">
+                <section class="section-head">
+                    <div>
+                        <h1 class="section-title">{{ $author->author_name }}</h1>
+                        <p class="section-text">Подробные данные автора.</p>
+                    </div>
+                    <a href="{{ route('admin.authors.index') }}" class="btn btn-secondary">Назад</a>
+                </section>
+
+                @if($partnerApplication)
+                    <section class="stack-md">
+                        <div class="info-box stack-md">
+                            <div class="simple-grid simple-grid--2">
+                                <div class="stack-sm">
+                                    <div><strong>Email:</strong> {{ $partnerApplication->user?->email ?? $author->user?->email ?? 'Email не указан' }}</div>
+                                    <div><strong>Статус:</strong> {{ $partnerApplication->status === 'approved' ? 'Подтверждена' : 'Ожидает подтверждения' }}</div>
+                                    <div><strong>Выплаты:</strong> {{ match($partnerApplication->payment_method) {
+                                        'card' => 'Карта',
+                                        'sbp' => 'СБП',
+                                        default => 'QR-код',
+                                    } }}</div>
+                                    <div><strong>Дата заявки:</strong> {{ $partnerApplication->created_at?->format('d.m.Y H:i') }}</div>
+                                    @if($partnerApplication->processed_at)
+                                        <div><strong>Подтверждена:</strong> {{ $partnerApplication->processed_at->format('d.m.Y H:i') }}</div>
+                                    @endif
+                                </div>
+                                <div class="stack-sm">
+                                    @if($partnerApplication->experience_summary)
+                                        <div><strong>Опыт:</strong> {{ $partnerApplication->experience_summary }}</div>
+                                    @endif
+                                    @if($partnerApplication->portfolio_url)
+                                        <div><strong>Портфолио:</strong> <a href="{{ $partnerApplication->portfolio_url }}" class="text-link">{{ $partnerApplication->portfolio_url }}</a></div>
+                                    @endif
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </section>
-            @endif
+                    </section>
+                @endif
+            </div>
 
             <section class="stack-md">
                 <div class="section-head">
                     <h2 class="subheading">Книги автора</h2>
-                    <span class="muted">Количество книг: {{ $books->count() }}</span>
+                    <span class="muted">Количество книг: <span data-admin-books-count>{{ $books->count() }}</span></span>
                 </div>
 
                 @if($books->isNotEmpty())
-                    <div class="stack-md">
+                    <div class="stack-md" data-admin-books-list>
                         @foreach($books as $book)
-                            <article class="info-box stack-sm">
+                            <article class="info-box stack-sm" data-admin-book-card data-book-id="{{ $book->getKey() }}">
                                 <div class="section-head">
                                     <div class="stack-sm">
                                         <a href="{{ route('admin.books.edit', $book) }}" class="text-link">{{ $book->book_name }}</a>
@@ -68,7 +72,14 @@
                                             {{ $book->genres->pluck('genre_name')->join(', ') ?: 'Жанры не указаны' }}
                                         </div>
                                     </div>
-                                    <a href="{{ route('admin.books.edit', $book) }}" class="btn btn-secondary">Редактировать</a>
+                                    <div class="actions">
+                                        <a href="{{ route('admin.books.edit', $book) }}" class="btn btn-secondary">Редактировать</a>
+                                        <form method="POST" action="{{ route('admin.books.destroy', $book) }}" data-admin-book-delete-form>
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-danger">Удалить</button>
+                                        </form>
+                                    </div>
                                 </div>
                             </article>
                         @endforeach

@@ -7,20 +7,19 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="page-shell auth-page" data-home-url="{{ route('home') }}">
-    @include('partials.site-header', ['showNav' => false, 'showFavorites' => false, 'showCart' => false, 'showAuthButtons' => false, 'showProfile' => false])
+    @include('partials.site-header', ['showNav' => false, 'showSearch' => false, 'showFavorites' => false, 'showCart' => false, 'showAuthButtons' => false, 'showProfile' => false])
 
     <main class="site-main">
         <section class="auth-card stack-md">
-            <div>
+            <div class="auth-card__head">
                 <h1 class="section-title">Сброс пароля</h1>
-                <p class="section-text">Введите email для восстановления доступа.</p>
             </div>
 
             @if (session('status'))
                 <div class="success-message">{{ session('status') }}</div>
             @endif
 
-            <form method="post" action="{{ route('password.email') }}" autocomplete="off" novalidate>
+            <form method="post" action="{{ route('password.email') }}" autocomplete="off" novalidate class="stack-md">
                 @csrf
 
                 <div class="form-group {{ $errors->has('email') ? 'error' : '' }}">

@@ -5,5 +5,4 @@
     @if(($showSearch ?? true))
         @include('partials.admin-search')
     @endif
-    @include('partials.admin-nav')
 </section>

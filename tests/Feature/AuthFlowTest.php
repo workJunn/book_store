@@ -95,7 +95,7 @@ it('sends a password reset notification', function () {
         'email' => $user->email,
     ]);
 
-    $response->assertSessionHas('status', 'Если такой email существует, ссылка для сброса уже отправлена.');
+    $response->assertSessionHas('status', 'Ссылка для сброса пароля отправлена.');
 
     Notification::assertSentTo($user, ResetPassword::class);
 });
@@ -107,7 +107,7 @@ it('returns the same password reset response for an unknown email', function () 
         'email' => 'missing@example.com',
     ]);
 
-    $response->assertSessionHas('status', 'Если такой email существует, ссылка для сброса уже отправлена.');
+    $response->assertSessionHas('status', 'Ссылка для сброса пароля отправлена.');
 
     Notification::assertNothingSent();
 });

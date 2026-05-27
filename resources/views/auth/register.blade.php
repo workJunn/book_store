@@ -11,17 +11,16 @@
 
     <main class="site-main">
         <section class="auth-card stack-md">
-            <div>
+            <div class="auth-card__head">
                 <h1 class="section-title">Регистрация</h1>
-                <p class="section-text">Создайте новый аккаунт.</p>
             </div>
 
-            <form method="POST" action="{{ route('register') }}" autocomplete="off">
+            <form method="POST" action="{{ route('register') }}" autocomplete="off" class="stack-md">
                 @csrf
 
                 <div class="form-group {{ $errors->has('name') ? 'error' : '' }}">
                     <label for="name">Имя</label>
-                    <input type="text" id="name" name="name" value="{{ old('name') }}">
+                    <input type="text" id="name" name="name" value="{{ old('name') }}" placeholder="Иван Иванов">
                     @error('name')
                         <p class="error-message">{{ $message }}</p>
                     @enderror
@@ -29,7 +28,7 @@
 
                 <div class="form-group {{ $errors->has('email') ? 'error' : '' }}">
                     <label for="email">Email</label>
-                    <input type="email" id="email" name="email" value="{{ old('email') }}">
+                    <input type="email" id="email" name="email" value="{{ old('email') }}" placeholder="ivan@example.com">
                     @error('email')
                         <p class="error-message">{{ $message }}</p>
                     @enderror
@@ -37,7 +36,7 @@
 
                 <div class="form-group {{ $errors->has('phone_number') ? 'error' : '' }}">
                     <label for="phone_number">Телефон</label>
-                    <input type="text" id="phone_number" name="phone_number" value="{{ old('phone_number') }}">
+                    <input type="text" id="phone_number" name="phone_number" value="{{ old('phone_number') }}" placeholder="+7 999 000-00-00">
                     @error('phone_number')
                         <p class="error-message">{{ $message }}</p>
                     @enderror
@@ -46,12 +45,12 @@
                 <div class="form-group {{ $errors->has('password') ? 'error' : '' }}">
                     <label for="password">Пароль</label>
                     <div class="password-field">
-                        <input type="password" id="password" name="password" data-password-input>
+                        <input type="password" id="password" name="password" placeholder="Не менее 8 символов" data-password-input>
                         <button
                             type="button"
                             class="password-toggle"
                             data-password-toggle
-                            aria-label="Удерживайте, чтобы показать пароль"
+                            aria-label="Показать или скрыть пароль"
                             aria-controls="password"
                             aria-pressed="false"
                         >
@@ -79,12 +78,12 @@
                 <div class="form-group {{ $errors->has('password_confirmation') ? 'error' : '' }}">
                     <label for="password_confirmation">Подтвердите пароль</label>
                     <div class="password-field">
-                        <input type="password" id="password_confirmation" name="password_confirmation" data-password-input>
+                        <input type="password" id="password_confirmation" name="password_confirmation" placeholder="Повторите пароль" data-password-input>
                         <button
                             type="button"
                             class="password-toggle"
                             data-password-toggle
-                            aria-label="Удерживайте, чтобы показать пароль"
+                            aria-label="Показать или скрыть пароль"
                             aria-controls="password_confirmation"
                             aria-pressed="false"
                         >

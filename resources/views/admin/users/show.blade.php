@@ -8,75 +8,79 @@
 </head>
 <body class="page-shell page-shell--column admin-page" data-home-url="{{ route('home') }}">
     <main class="site-main">
-        <section class="container stack-lg">
-            <section class="section-head">
-                <div>
-                    <h1 class="section-title">{{ $user->name }}</h1>
-                    <p class="section-text">Подробные данные пользователя.</p>
-                </div>
-                <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">Назад</a>
-            </section>
+        <section class="container stack-lg admin-layout">
+            @include('partials.admin-sidebar')
 
-            @if(session('status'))
-                <div class="success-box">{{ session('status') }}</div>
-            @endif
+            <div class="admin-detail-overview">
+                <section class="section-head">
+                    <div>
+                        <h1 class="section-title">{{ $user->name }}</h1>
+                        <p class="section-text">Подробные данные пользователя.</p>
+                    </div>
+                    <a href="{{ route('admin.users.index') }}" class="btn btn-secondary">Назад</a>
+                </section>
 
-            <section class="stack-md">
-                <div class="profile-info">
-                    <div class="info-box">
-                        <div class="info-label">ID пользователя</div>
-                        <div class="info-value">{{ $user->getKey() }}</div>
+                @if(session('status'))
+                    <div class="success-box">{{ session('status') }}</div>
+                @endif
+
+                <section class="stack-md">
+                    <div class="profile-info">
+                        <div class="info-box">
+                            <div class="info-label">ID пользователя</div>
+                            <div class="info-value">{{ $user->getKey() }}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Имя</div>
+                            <div class="info-value">{{ $user->name }}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Email</div>
+                            <div class="info-value">{{ $user->email }}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Телефон</div>
+                            <div class="info-value">{{ $user->phone_number ?: 'Не указан' }}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Роль</div>
+                            <div class="info-value">{{ $user->role?->role_name ?? 'user' }}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">ID роли</div>
+                            <div class="info-value">{{ $user->id_role ?? 'Не указан' }}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Баланс</div>
+                            <div class="info-value">{{ number_format((float) $user->balance, 2, '.', ' ') }} ₽</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Дата регистрации</div>
+                            <div class="info-value">{{ $user->registration_date ? $user->registration_date->format('d.m.Y H:i') : 'Не указана' }}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Email подтвержден</div>
+                            <div class="info-value">{{ $user->email_verified_at ? $user->email_verified_at->format('d.m.Y H:i') : 'Нет' }}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Создан в системе</div>
+                            <div class="info-value">{{ $user->created_at ? $user->created_at->format('d.m.Y H:i') : 'Не указано' }}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Обновлен в системе</div>
+                            <div class="info-value">{{ $user->updated_at ? $user->updated_at->format('d.m.Y H:i') : 'Не указано' }}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Хеш пароля</div>
+                            <div class="info-value">{{ $user->password }}</div>
+                        </div>
+                        <div class="info-box">
+                            <div class="info-label">Remember token</div>
+                            <div class="info-value">{{ $user->remember_token ?: 'Не указан' }}</div>
+                        </div>
                     </div>
-                    <div class="info-box">
-                        <div class="info-label">Имя</div>
-                        <div class="info-value">{{ $user->name }}</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Email</div>
-                        <div class="info-value">{{ $user->email }}</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Телефон</div>
-                        <div class="info-value">{{ $user->phone_number ?: 'Не указан' }}</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Роль</div>
-                        <div class="info-value">{{ $user->role?->role_name ?? 'user' }}</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">ID роли</div>
-                        <div class="info-value">{{ $user->id_role ?? 'Не указан' }}</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Баланс</div>
-                        <div class="info-value">{{ number_format((float) $user->balance, 2, '.', ' ') }} ₽</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Дата регистрации</div>
-                        <div class="info-value">{{ $user->registration_date ? $user->registration_date->format('d.m.Y H:i') : 'Не указана' }}</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Email подтвержден</div>
-                        <div class="info-value">{{ $user->email_verified_at ? $user->email_verified_at->format('d.m.Y H:i') : 'Нет' }}</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Создан в системе</div>
-                        <div class="info-value">{{ $user->created_at ? $user->created_at->format('d.m.Y H:i') : 'Не указано' }}</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Обновлен в системе</div>
-                        <div class="info-value">{{ $user->updated_at ? $user->updated_at->format('d.m.Y H:i') : 'Не указано' }}</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Хеш пароля</div>
-                        <div class="info-value">{{ $user->password }}</div>
-                    </div>
-                    <div class="info-box">
-                        <div class="info-label">Remember token</div>
-                        <div class="info-value">{{ $user->remember_token ?: 'Не указан' }}</div>
-                    </div>
-                </div>
-            </section>
+                </section>
+            </div>
 
             <section class="stack-md">
                 <div>
