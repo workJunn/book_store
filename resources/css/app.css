@@ -100,6 +100,7 @@ img {
 }
 
 .book-layout > .stack-md:first-child {
+    width: 100%;
     justify-items: start;
     align-items: start;
 }
@@ -763,10 +764,12 @@ img {
 .chips {
     display: flex;
     flex-direction: row;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
     justify-content: flex-start;
     align-items: flex-start;
     gap: 8px;
+    width: 100%;
+    max-width: 100%;
     direction: ltr;
 }
 
@@ -1264,6 +1267,9 @@ input[type='number'] {
 
 .book-image {
     width: 100%;
+    height: clamp(500px, 76vh, 740px);
+    object-fit: cover;
+    object-position: center;
     border-radius: 14px;
     border: 0;
     background: #fff;
@@ -1361,6 +1367,17 @@ input[type='number'] {
     font-weight: 600;
     word-break: break-word;
     line-height: 1.5;
+}
+
+.partner-audience-highlight {
+    margin: 0;
+    color: #111827;
+    font-weight: 700;
+    line-height: 1.6;
+}
+
+.partner-commission-value {
+    color: #111827;
 }
 
 .balance-row {

@@ -84,6 +84,21 @@ it('always redirects an admin to admin panel after login', function () {
     $this->assertAuthenticatedAs($admin);
 });
 
+it('links the header profile button to admin panel for admin users', function () {
+    $adminRole = Role::create([
+        'role_name' => 'admin',
+    ]);
+
+    $admin = User::factory()->create([
+        'id_role' => $adminRole->getKey(),
+    ]);
+
+    $this->actingAs($admin)->get(route('home'))
+        ->assertOk()
+        ->assertSee('aria-label="Профиль"', false)
+        ->assertSee(route('admin.index'), false);
+});
+
 it('sends a password reset notification', function () {
     Notification::fake();
 

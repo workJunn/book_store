@@ -67,15 +67,33 @@ class AdminController extends Controller
         return view('admin.partner-applications.index', [
             'applications' => PartnerApplication::query()
                 ->with('user')
-                ->orderByRaw("CASE WHEN status = 'pending' THEN 0 ELSE 1 END")
+                ->where('status', 'pending')
                 ->orderByDesc('created_at')
                 ->get(),
+        ]);
+    }
+
+    public function showPartnerApplication(PartnerApplication $application)
+    {
+        $application->load('user.role');
+
+        return view('admin.partner-applications.show', [
+            'application' => $application,
+            'user' => $application->user,
         ]);
     }
 
     public function approvePartnerApplication(PartnerApplication $application)
     {
         if ($application->status === 'approved') {
+            if (request()->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Заявка уже была подтверждена ранее.',
+                    'status' => 'approved',
+                ]);
+            }
+
             return redirect()
                 ->route('admin.authors.index')
                 ->with('status', 'Заявка уже была подтверждена ранее.');
@@ -86,9 +104,16 @@ class AdminController extends Controller
                 'role_name' => 'author',
             ]);
 
-            $application->user()->update([
-                'id_role' => $authorRole->getKey(),
-            ]);
+            $user = $application->user()
+                ->with('role')
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            if (! $user->isAdmin()) {
+                $user->update([
+                    'id_role' => $authorRole->getKey(),
+                ]);
+            }
 
             Author::query()->updateOrCreate(
                 ['id_users' => $application->id_users],
@@ -103,6 +128,18 @@ class AdminController extends Controller
                 'processed_at' => now(),
             ]);
         });
+
+        if (request()->expectsJson()) {
+            $application->refresh();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Заявка подтверждена. Пользователь переведен в роль автора.',
+                'status' => 'approved',
+                'status_label' => 'Подтверждена',
+                'processed_at' => $application->processed_at?->format('d.m.Y H:i'),
+            ]);
+        }
 
         return redirect()
             ->route('admin.authors.index')
@@ -218,6 +255,17 @@ class AdminController extends Controller
             Book::query()
                 ->where('id_author', $author->getKey())
                 ->update(['id_author' => null]);
+
+            if ($user) {
+                PartnerApplication::query()
+                    ->where('id_users', $user->getKey())
+                    ->where('status', 'approved')
+                    ->latest('processed_at')
+                    ->limit(1)
+                    ->update([
+                        'status' => 'removed',
+                    ]);
+            }
 
             $author->delete();
 

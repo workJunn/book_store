@@ -53,7 +53,7 @@
 
             @auth
                 @if(($showProfile ?? true) === true)
-                    <a href="{{ route('dashboard') }}" class="icon-link" title="Профиль" aria-label="Профиль">👤</a>
+                    <a href="{{ auth()->user()?->isAdmin() ? route('admin.index') : route('dashboard') }}" class="icon-link" title="Профиль" aria-label="Профиль">👤</a>
                 @endif
             @endauth
         </div>

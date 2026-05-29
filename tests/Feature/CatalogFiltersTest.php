@@ -55,6 +55,7 @@ it('filters catalog by genre', function () {
     $response = $this->get('/catalog?genre=' . $novel->getKey());
 
     $response->assertOk();
+    $response->assertSee('data-catalog-filter-link', false);
     $response->assertSee('Преступление и наказание');
     $response->assertDontSee('Шерлок Холмс');
 });
@@ -146,6 +147,15 @@ it('shows quick rankings on the welcome page and links them to catalog periods',
     $response->assertSee('Скотный двор');
 
     Carbon::setTestNow();
+});
+
+it('marks catalog ranking links for ajax filtering', function () {
+    $response = $this->get('/catalog');
+
+    $response->assertOk()
+        ->assertSee('Рейтинг книг')
+        ->assertSee('period=year', false)
+        ->assertSee('data-catalog-filter-link', false);
 });
 
 it('shows exactly the latest ten books on the welcome page new arrivals shelf', function () {

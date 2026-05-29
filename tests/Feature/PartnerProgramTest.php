@@ -21,6 +21,24 @@ function makePartnerCoverUpload(string $filename = 'cover.png'): UploadedFile
     return new UploadedFile($path, $filename, 'image/png', null, true);
 }
 
+it('shows partner application form on a separate page', function () {
+    $user = User::factory()->create();
+
+    $this->get(route('partner.program'))
+        ->assertOk()
+        ->assertSee(route('partner.program.apply.form'), false)
+        ->assertDontSee('name="pen_name"', false)
+        ->assertDontSee('name="biography"', false);
+
+    $this->actingAs($user)->get(route('partner.program.apply.form'))
+        ->assertOk()
+        ->assertSee('Имя автора или псевдоним')
+        ->assertSee('Краткая биография')
+        ->assertDontSee('Предпочтительный способ выплат')
+        ->assertDontSee('QR-кодом')
+        ->assertSee('Отправить заявку');
+});
+
 it('allows a user to submit a partner application', function () {
     $userRole = Role::create([
         'role_name' => 'user',
@@ -35,12 +53,12 @@ it('allows a user to submit a partner application', function () {
         'biography' => 'Пишу современные романы и короткую прозу.',
         'experience_summary' => '3 изданные книги.',
         'portfolio_url' => 'https://example.com/marina',
-        'payment_method' => 'sbp',
     ])->assertRedirect(route('partner.program'));
 
     $this->assertDatabaseHas('partner_applications', [
         'id_users' => $user->getKey(),
         'pen_name' => 'Марина Соколова',
+        'payment_method' => 'card',
         'status' => 'pending',
     ]);
 });
@@ -74,14 +92,39 @@ it('allows admin to approve a partner application and opens the author panel for
 
     $this->actingAs($admin)->get(route('admin.authors.index'))
         ->assertOk()
-        ->assertDontSee('Партнёрские заявки')
+        ->assertSee('Партнерские заявки')
+        ->assertSee(route('admin.partner-applications.index'), false)
         ->assertDontSee('Партнерский автор')
         ->assertDontSee('Автор современной прозы.')
         ->assertDontSee('Публикуюсь с 2020 года.')
         ->assertDontSee('Принять');
 
-    $this->actingAs($admin)->post(route('admin.partner-applications.approve', $application))
-        ->assertRedirect(route('admin.authors.index'));
+    $this->actingAs($admin)->get(route('admin.partner-applications.index'))
+        ->assertOk()
+        ->assertSee('Партнерский автор')
+        ->assertSee($user->email)
+        ->assertSee('Ожидает подтверждения')
+        ->assertSee(route('admin.partner-applications.show', $application), false)
+        ->assertDontSee('Автор современной прозы.')
+        ->assertDontSee('Публикуюсь с 2020 года.')
+        ->assertDontSee('Принять');
+
+    $this->actingAs($admin)->get(route('admin.partner-applications.show', $application))
+        ->assertOk()
+        ->assertSee('Партнерский автор')
+        ->assertSee($user->email)
+        ->assertSee('Автор современной прозы.')
+        ->assertSee('Публикуюсь с 2020 года.')
+        ->assertSee('Карта')
+        ->assertSee('Принять');
+
+    $this->actingAs($admin)->postJson(route('admin.partner-applications.approve', $application))
+        ->assertOk()
+        ->assertJson([
+            'success' => true,
+            'status' => 'approved',
+            'status_label' => 'Подтверждена',
+        ]);
 
     $authorRole = Role::query()->where('role_name', 'author')->firstOrFail();
     $user->refresh();
@@ -98,6 +141,12 @@ it('allows admin to approve a partner application and opens the author panel for
         'status' => 'approved',
     ]);
 
+    $this->actingAs($admin)->get(route('admin.partner-applications.index'))
+        ->assertOk()
+        ->assertDontSee('Партнерский автор')
+        ->assertDontSee($user->email)
+        ->assertDontSee('Подтверждена');
+
     $author = Author::query()->where('id_users', $user->getKey())->firstOrFail();
 
     $this->actingAs($admin)->get(route('admin.authors.index'))
@@ -105,7 +154,8 @@ it('allows admin to approve a partner application and opens the author panel for
         ->assertSee('Партнерский автор')
         ->assertDontSee('Партнёрская заявка')
         ->assertDontSee('выплаты: Карта')
-        ->assertDontSee('Партнёрские заявки')
+        ->assertSee('Партнерские заявки')
+        ->assertSee(route('admin.partner-applications.index'), false)
         ->assertDontSee('Автор современной прозы.')
         ->assertDontSee('Публикуюсь с 2020 года.');
 
@@ -132,6 +182,45 @@ it('allows admin to approve a partner application and opens the author panel for
         ->assertOk()
         ->assertSee('Панель автора')
         ->assertSee('Партнерский автор');
+});
+
+it('does not remove admin role when approving an admins partner application', function () {
+    $adminRole = Role::create([
+        'role_name' => 'admin',
+    ]);
+
+    $admin = User::factory()->create([
+        'id_role' => $adminRole->getKey(),
+    ]);
+
+    $application = PartnerApplication::create([
+        'id_users' => $admin->getKey(),
+        'pen_name' => 'Администратор',
+        'biography' => 'Администратор магазина.',
+        'experience_summary' => 'Управляет каталогом.',
+        'payment_method' => 'card',
+        'status' => 'pending',
+    ]);
+
+    $this->actingAs($admin)->postJson(route('admin.partner-applications.approve', $application))
+        ->assertOk()
+        ->assertJson([
+            'success' => true,
+            'status' => 'approved',
+        ]);
+
+    $admin->refresh()->load('role');
+
+    expect($admin->role?->role_name)->toBe('admin');
+
+    $this->actingAs($admin)->get(route('admin.index'))
+        ->assertOk()
+        ->assertSee('Админ панель');
+
+    $this->assertDatabaseHas('authors', [
+        'id_users' => $admin->getKey(),
+        'author_name' => 'Администратор',
+    ]);
 });
 
 it('allows an approved author to manage own books with discount editing', function () {

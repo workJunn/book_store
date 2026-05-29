@@ -666,6 +666,104 @@ async function deleteAdminBook(form) {
     }
 }
 
+async function approvePartnerApplication(form) {
+    const submitButton = form.querySelector('button[type="submit"]');
+    const originalButtonText = submitButton?.textContent;
+
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.textContent = 'Принятие...';
+    }
+
+    try {
+        const response = await fetch(form.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': token,
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+            body: new FormData(form),
+        });
+
+        const data = await response.json();
+
+        if (!response.ok || data.error) {
+            showFlashMessage(data.message || 'Не удалось принять заявку', 'error');
+            return;
+        }
+
+        const status = document.querySelector('[data-partner-application-status]');
+        if (status) {
+            status.textContent = data.status_label || 'Подтверждена';
+        }
+
+        const processedAt = document.querySelector('[data-partner-application-processed-at]');
+        if (processedAt) {
+            processedAt.textContent = data.processed_at || 'Только что';
+        }
+
+        form.closest('[data-partner-application-actions]')?.remove();
+        showFlashMessage(data.message || 'Заявка подтверждена.');
+    } catch (error) {
+        showFlashMessage('Ошибка сервера', 'error');
+    } finally {
+        if (submitButton && document.contains(submitButton)) {
+            submitButton.disabled = false;
+            submitButton.textContent = originalButtonText;
+        }
+    }
+}
+
+async function loadCatalogUrl(url, pushState = true) {
+    const currentFilters = document.querySelector('[data-catalog-filters]');
+    const currentResults = document.querySelector('[data-catalog-results]');
+
+    if (!currentFilters || !currentResults) {
+        window.location.assign(url);
+        return;
+    }
+
+    currentResults.setAttribute('aria-busy', 'true');
+
+    try {
+        const response = await fetch(url, {
+            headers: {
+                Accept: 'text/html',
+                'X-Requested-With': 'XMLHttpRequest',
+            },
+        });
+
+        if (!response.ok) {
+            window.location.assign(url);
+            return;
+        }
+
+        const html = await response.text();
+        const nextDocument = new DOMParser().parseFromString(html, 'text/html');
+        const nextFilters = nextDocument.querySelector('[data-catalog-filters]');
+        const nextResults = nextDocument.querySelector('[data-catalog-results]');
+
+        if (!nextFilters || !nextResults) {
+            window.location.assign(url);
+            return;
+        }
+
+        currentFilters.replaceWith(nextFilters);
+        currentResults.replaceWith(nextResults);
+        syncFavoriteButtons();
+        updateFavoritesCount();
+
+        if (pushState) {
+            window.history.pushState({ catalogUrl: url }, '', url);
+        }
+    } catch (error) {
+        window.location.assign(url);
+    } finally {
+        document.querySelector('[data-catalog-results]')?.removeAttribute('aria-busy');
+    }
+}
+
 async function confirmCheckout() {
     try {
         const data = await postJson('/cart/checkout');
@@ -1064,6 +1162,13 @@ document.addEventListener('click', (event) => {
         return;
     }
 
+    const catalogFilterLink = event.target.closest('[data-catalog-filter-link]');
+    if (catalogFilterLink) {
+        event.preventDefault();
+        loadCatalogUrl(catalogFilterLink.href);
+        return;
+    }
+
     const cartActionButton = event.target.closest('[data-cart-action]');
     if (cartActionButton) {
         updateCartItem(cartActionButton.dataset.itemId, cartActionButton.dataset.cartAction);
@@ -1152,6 +1257,13 @@ document.addEventListener('submit', (event) => {
         return;
     }
 
+    const partnerApplicationApproveForm = event.target.closest('[data-partner-application-approve-form]');
+    if (partnerApplicationApproveForm) {
+        event.preventDefault();
+        approvePartnerApplication(partnerApplicationApproveForm);
+        return;
+    }
+
     const reviewForm = event.target.closest('[data-review-form]');
 
     if (!reviewForm) {
@@ -1221,4 +1333,10 @@ document.addEventListener('keydown', (event) => {
 
 document.addEventListener('DOMContentLoaded', () => {
     triggerPurchasedBookDownloads();
+});
+
+window.addEventListener('popstate', () => {
+    if (document.body.dataset.page === 'catalog') {
+        loadCatalogUrl(window.location.href, false);
+    }
 });

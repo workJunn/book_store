@@ -44,7 +44,8 @@ it('shows detailed book page with extended information', function () {
 
     $this->get(route('books.show', $book))
         ->assertOk()
-        ->assertSee('Подробная страница книги')
+        ->assertDontSee('Карточка книги')
+        ->assertDontSee('Подробная страница книги')
         ->assertSee('О книге')
         ->assertSee('Об авторе')
         ->assertSee('Отзывы читателей')

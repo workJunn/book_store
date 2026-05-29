@@ -10,7 +10,12 @@ class PartnerProgramController extends Controller
 {
     public function show()
     {
-        return view('partner-program', [
+        return view('partner-program');
+    }
+
+    public function create()
+    {
+        return view('partner-program-apply', [
             'latestApplication' => Auth::user()?->partnerApplications()->latest('created_at')->first(),
         ]);
     }
@@ -33,15 +38,12 @@ class PartnerProgramController extends Controller
             'biography' => ['required', 'string', 'max:2000'],
             'experience_summary' => ['nullable', 'string', 'max:1000'],
             'portfolio_url' => ['nullable', 'url', 'max:255'],
-            'payment_method' => ['required', 'in:card,sbp,qr'],
         ], [
             'pen_name.required' => 'Укажите имя автора или литературный псевдоним.',
             'biography.required' => 'Добавьте короткую биографию.',
             'biography.max' => 'Биография не должна превышать 2000 символов.',
             'experience_summary.max' => 'Описание опыта не должно превышать 1000 символов.',
             'portfolio_url.url' => 'Ссылка на портфолио должна быть корректной.',
-            'payment_method.required' => 'Выберите способ выплат.',
-            'payment_method.in' => 'Выбран неподдерживаемый способ выплат.',
         ]);
 
         PartnerApplication::create([
@@ -50,7 +52,7 @@ class PartnerProgramController extends Controller
             'biography' => $validated['biography'],
             'experience_summary' => $validated['experience_summary'] ?? null,
             'portfolio_url' => $validated['portfolio_url'] ?? null,
-            'payment_method' => $validated['payment_method'],
+            'payment_method' => 'card',
             'status' => 'pending',
         ]);
 

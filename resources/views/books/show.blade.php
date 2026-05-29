@@ -29,7 +29,6 @@
                         >
 
                         <div class="chips">
-                            <span class="chip">Книга</span>
                             @foreach($book->genres as $genre)
                                 <span class="chip">{{ $genre->genre_name }}</span>
                             @endforeach
@@ -39,8 +38,6 @@
                     <div class="stack-md">
                             <div class="section-head">
                                 <div>
-                                    <p class="eyebrow">Карточка книги</p>
-                                    <div class="muted">Подробная страница книги</div>
                                     <h1 class="section-title">{{ $book->book_name }}</h1>
                                     <p class="section-text">Автор: {{ $book->author->author_name ?? 'Не указан' }}</p>
                                 </div>

@@ -45,6 +45,7 @@ it('allows only admins to open the admin panel', function () {
         ->assertSee('Админ панель')
         ->assertSee(route('admin.index'), false)
         ->assertSee(route('admin.books.index'), false)
+        ->assertSee(route('admin.partner-applications.index'), false)
         ->assertSee('На главную')
         ->assertSee(route('home'), false)
         ->assertSee(route('admin.search'), false)
@@ -66,7 +67,9 @@ it('allows only admins to open the admin panel', function () {
         ->and(strpos($content, '>Заказы</a>'))
         ->toBeLessThan(strpos($content, '>Авторы</a>'))
         ->and(strpos($content, '>Авторы</a>'))
-        ->toBeLessThan(strpos($content, '>Книги</a>'));
+        ->toBeLessThan(strpos($content, '>Книги</a>'))
+        ->and(strpos($content, '>Книги</a>'))
+        ->toBeLessThan(strpos($content, '>Партнерские заявки</a>'));
 
     $this->actingAs($user)->get(route('admin.index'))
         ->assertForbidden();
@@ -319,6 +322,16 @@ it('allows admin to delete an author without deleting their books', function () 
         'id_role' => $authorRole->getKey(),
     ]);
 
+    $application = \App\Models\PartnerApplication::create([
+        'id_users' => $authorUser->getKey(),
+        'pen_name' => 'Удаляемый автор',
+        'biography' => 'Биография.',
+        'experience_summary' => 'Опыт.',
+        'payment_method' => 'card',
+        'status' => 'approved',
+        'processed_at' => now(),
+    ]);
+
     $author = Author::create([
         'id_users' => $authorUser->getKey(),
         'author_name' => 'Удаляемый автор',
@@ -359,6 +372,22 @@ it('allows admin to delete an author without deleting their books', function () 
     ]);
 
     expect((int) $authorUser->fresh()->id_role)->toBe((int) $userRole->getKey());
+
+    $this->assertDatabaseHas('partner_applications', [
+        'id_partner_application' => $application->getKey(),
+        'status' => 'removed',
+    ]);
+
+    $this->actingAs($authorUser)->post(route('partner.program.apply'), [
+        'pen_name' => 'Удаляемый автор снова',
+        'biography' => 'Новая биография.',
+    ])->assertRedirect(route('partner.program'));
+
+    $this->assertDatabaseHas('partner_applications', [
+        'id_users' => $authorUser->getKey(),
+        'pen_name' => 'Удаляемый автор снова',
+        'status' => 'pending',
+    ]);
 });
 
 it('allows admin to create and update a book', function () {

@@ -13,7 +13,7 @@
     <main class="site-main">
         <section class="container stack-lg">
             <section class="catalog-layout">
-                <aside class="stack-md catalog-sidebar">
+                <aside class="stack-md catalog-sidebar" data-catalog-filters>
                     <section class="catalog-filter-section stack-sm">
                         <h2 class="catalog-filter-title">Жанры</h2>
                         <div class="catalog-category-list">
@@ -21,6 +21,7 @@
                                 <a
                                     href="{{ route('catalog', array_merge(request()->except(['page', 'period', 'sort', 'genre']), ['genre' => $genre->getKey()])) }}"
                                     class="catalog-category-link {{ blank($filters['period']) && (string) $filters['genre'] === (string) $genre->getKey() ? 'is-active' : '' }}"
+                                    data-catalog-filter-link
                                 >
                                     {{ $genre->genre_name }}
                                 </a>
@@ -43,6 +44,7 @@
                                 <a
                                     href="{{ route('catalog', $rankingQuery) }}"
                                     class="catalog-category-link {{ blank($filters['genre']) && $filters['period'] === $ranking['period'] ? 'is-active' : '' }}"
+                                    data-catalog-filter-link
                                 >
                                     {{ $ranking['title'] }}
                                 </a>
@@ -52,7 +54,7 @@
 
                 </aside>
 
-                <div class="stack-md">
+                <div class="stack-md" data-catalog-results>
                     <section>
                         <p class="section-text">Найдено книг: {{ $foundBooksCount }}</p>
                     </section>

@@ -52,6 +52,8 @@ Route::post('/cart/checkout', [CartController::class, 'checkout'])->name('cart.c
 Route::get('/dashboard', [ProfileController::class, 'index'])
     ->middleware('auth')
     ->name('dashboard');
+Route::get('/partner-program/apply', [PartnerProgramController::class, 'create'])
+    ->name('partner.program.apply.form');
 Route::post('/partner-program/apply', [PartnerProgramController::class, 'apply'])
     ->middleware('auth')
     ->name('partner.program.apply');
@@ -97,6 +99,9 @@ Route::get('/admin/users', [AdminController::class, 'users'])
 Route::get('/admin/partner-applications', [AdminController::class, 'partnerApplications'])
     ->middleware(['auth', 'admin'])
     ->name('admin.partner-applications.index');
+Route::get('/admin/partner-applications/{application}', [AdminController::class, 'showPartnerApplication'])
+    ->middleware(['auth', 'admin'])
+    ->name('admin.partner-applications.show');
 Route::post('/admin/partner-applications/{application}/approve', [AdminController::class, 'approvePartnerApplication'])
     ->middleware(['auth', 'admin'])
     ->name('admin.partner-applications.approve');
